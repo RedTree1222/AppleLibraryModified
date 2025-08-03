@@ -184,6 +184,130 @@ function lib:init(title, visible, toggleKey, allowResize)
 
         table.insert(workareas, workareamain)
 
+        function sec:Dropdown(name, options, default, callback)
+            local dropdown = Instance.new("TextLabel")
+            dropdown.Name = "dropdown"
+            dropdown.Parent = workareamain
+            dropdown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            dropdown.BackgroundTransparency = 1
+            dropdown.Size = UDim2.new(0, 418, 0, 37)
+            dropdown.Font = Enum.Font.Gotham
+            dropdown.TextColor3 = Color3.fromRGB(95, 95, 95)
+            dropdown.TextSize = 21
+            dropdown.TextWrapped = true
+            dropdown.TextXAlignment = Enum.TextXAlignment.Left
+            dropdown.Text = name
+        
+            local frame = Instance.new("TextButton")
+            frame.Parent = dropdown
+            frame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+            frame.Position = UDim2.new(0.55, 0, 0.1, 0)
+            frame.Size = UDim2.new(0, 180, 0, 30)
+            frame.AutoButtonColor = true
+            frame.Text = ""
+            
+            local uc_frame = Instance.new("UICorner")
+            uc_frame.CornerRadius = UDim.new(0, 9)
+            uc_frame.Parent = frame
+        
+            local selectedText = Instance.new("TextLabel")
+            selectedText.Parent = frame
+            selectedText.BackgroundTransparency = 1
+            selectedText.Size = UDim2.new(1, -20, 1, 0)
+            selectedText.Position = UDim2.new(0, 5, 0, 0)
+            selectedText.Font = Enum.Font.Gotham
+            selectedText.TextSize = 18
+            selectedText.TextColor3 = Color3.fromRGB(21, 103, 251)
+            selectedText.TextXAlignment = Enum.TextXAlignment.Left
+            selectedText.Text = default or "Select..."
+        
+            local arrow = Instance.new("TextLabel")
+            arrow.Parent = frame
+            arrow.BackgroundTransparency = 1
+            arrow.Size = UDim2.new(0, 15, 1, 0)
+            arrow.Position = UDim2.new(1, -18, 0, 0)
+            arrow.Font = Enum.Font.GothamBold
+            arrow.TextSize = 18
+            arrow.Text = "▼"
+            arrow.TextColor3 = Color3.fromRGB(95, 95, 95)
+        
+            local dropdownList = Instance.new("Frame")
+            dropdownList.Parent = dropdown
+            dropdownList.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+            dropdownList.Position = UDim2.new(0.55, 0, 1, 5)
+            dropdownList.Size = UDim2.new(0, 180, 0, 0)
+            dropdownList.ClipsDescendants = true
+            dropdownList.Visible = false
+        
+            local uc_list = Instance.new("UICorner")
+            uc_list.CornerRadius = UDim.new(0, 9)
+            uc_list.Parent = dropdownList
+        
+            local ui_list_layout = Instance.new("UIListLayout")
+            ui_list_layout.Parent = dropdownList
+            ui_list_layout.SortOrder = Enum.SortOrder.LayoutOrder
+            ui_list_layout.Padding = UDim.new(0, 2)
+        
+            local expanded = false
+        
+            local function toggleDropdown()
+                if expanded then
+                    expanded = false
+                    dropdownList:TweenSize(UDim2.new(0, 180, 0, 0), "Out", "Quad", 0.2, true)
+                    task.delay(0.2, function()
+                        dropdownList.Visible = false
+                    end)
+                    arrow.Text = "▼"
+                else
+                    expanded = true
+                    dropdownList.Visible = true
+                    local height = #options * 30 + 4
+                    dropdownList:TweenSize(UDim2.new(0, 180, 0, height), "Out", "Quad", 0.2, true)
+                    arrow.Text = "▲"
+                end
+            end
+        
+            frame.MouseButton1Click:Connect(toggleDropdown)
+            dropdown.MouseButton1Click:Connect(toggleDropdown)
+        
+            -- Clear old options (if any)
+            for _, child in pairs(dropdownList:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child:Destroy()
+                end
+            end
+        
+            -- Create option buttons
+            for i, option in ipairs(options) do
+                local optionBtn = Instance.new("TextButton")
+                optionBtn.Name = "Option_" .. i
+                optionBtn.Parent = dropdownList
+                optionBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                optionBtn.Size = UDim2.new(1, -4, 0, 30)
+                optionBtn.Position = UDim2.new(0, 2, 0, (i-1)*30)
+                optionBtn.Font = Enum.Font.Gotham
+                optionBtn.TextSize = 18
+                optionBtn.TextColor3 = Color3.fromRGB(21, 103, 251)
+                optionBtn.Text = option
+                optionBtn.AutoButtonColor = true
+        
+                local uc_opt = Instance.new("UICorner")
+                uc_opt.CornerRadius = UDim.new(0, 6)
+                uc_opt.Parent = optionBtn
+        
+                optionBtn.MouseButton1Click:Connect(function()
+                    selectedText.Text = option
+                    toggleDropdown()
+                    if callback then
+                        callback(option)
+                    end
+                end)
+            end
+        
+            return dropdown
+        end
+
+
         -- Select function to show this section
         function sec:Select()
             for _, v in pairs(sections) do
