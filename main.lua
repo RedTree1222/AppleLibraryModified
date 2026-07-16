@@ -301,33 +301,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
     end)
 
-    local jellyMode = false
-    local jellyScale = Instance.new("UIScale")
-    jellyScale.Scale = 1
-    jellyScale.Parent = main
-
     RunService.RenderStepped:Connect(function(dt)
-        if jellyMode then
-            local followSpeed = 15
-            currentX = currentX + (targetX - currentX) * (1 - math.exp(-followSpeed * dt))
-            currentY = currentY + (targetY - currentY) * (1 - math.exp(-followSpeed * dt))
-            main.Position = UDim2.new(0.5, currentX, 0.5, currentY)
-
-            local velX = math.abs(targetX - currentX)
-            local velY = math.abs(targetY - currentY)
-            local stretch = math.clamp(1 + (velX + velY) * 0.0003, 1, 1.06)
-            jellyScale.Scale = jellyScale.Scale + (stretch - jellyScale.Scale) * (1 - math.exp(-18 * dt))
-        else
-            jellyScale.Scale = jellyScale.Scale + (1 - jellyScale.Scale) * (1 - math.exp(-20 * dt))
-            if dragging then
-                currentX = targetX
-                currentY = targetY
-                main.Position = UDim2.new(0.5, currentX, 0.5, currentY)
-            else
-                currentX = main.Position.X.Offset
-                currentY = main.Position.Y.Offset
-            end
-        end
+        local followSpeed = 15
+        currentX = currentX + (targetX - currentX) * (1 - math.exp(-followSpeed * dt))
+        currentY = currentY + (targetY - currentY) * (1 - math.exp(-followSpeed * dt))
+        main.Position = UDim2.new(0.5, currentX, 0.5, currentY)
     end)
 
     local workarea = Instance.new("Frame")
@@ -605,27 +583,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             targetY = resizeStartPos.Y.Offset + (deltaHeight / 2)
 
             main.Size = UDim2.new(0, newWidth, 0, newHeight)
-            if not jellyMode then
-                currentX = targetX
-                currentY = targetY
-                main.Position = UDim2.new(0.5, currentX, 0.5, currentY)
-            end
+            currentX = targetX
+            currentY = targetY
+            main.Position = UDim2.new(0.5, currentX, 0.5, currentY)
         end
     end)
 
-    local jellyToggle = Instance.new("TextButton")
-    jellyToggle.Name = "jellyToggle"
-    jellyToggle.Parent = main
-    jellyToggle.Size = UDim2.new(0, 20, 0, 20)
-    jellyToggle.Position = UDim2.new(1, -40, 1, -20)
-    jellyToggle.BackgroundTransparency = 1
-    jellyToggle.Text = ""
-    jellyToggle.ZIndex = 13
 
-    jellyToggle.MouseButton1Click:Connect(function()
-        jellyMode = not jellyMode
-        print("Jelly Mode: " .. (jellyMode and "On" or "Off"))
-    end)
 
     local notif = Instance.new("Frame")
     notif.Name = "notif"
@@ -2014,9 +1978,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         
         setsec:Divider("UI Customization")
         
-        setsec:Switch("Jelly Dragging", false, function(v)
-            jellyMode = v
-        end, "Settings_JellyDrag")
+
         
         setsec:Switch("Custom Crosshair", true, function(v)
             useCustomCursor = v
