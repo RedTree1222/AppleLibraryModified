@@ -302,6 +302,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end)
 
     local jellyMode = false
+    local jellyScale = Instance.new("UIScale")
+    jellyScale.Scale = 1
+    jellyScale.Parent = main
 
     RunService.RenderStepped:Connect(function(dt)
         if jellyMode then
@@ -310,10 +313,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             currentY = currentY + (targetY - currentY) * (1 - math.exp(-followSpeed * dt))
             main.Position = UDim2.new(0.5, currentX, 0.5, currentY)
 
-            local speedX = targetX - currentX
-            local targetRot = math.clamp(speedX * 0.05, -8, 8)
-            main.Rotation = main.Rotation + (targetRot - main.Rotation) * (1 - math.exp(-20 * dt))
+            local velX = math.abs(targetX - currentX)
+            local velY = math.abs(targetY - currentY)
+            local stretch = math.clamp(1 + (velX + velY) * 0.0003, 1, 1.06)
+            jellyScale.Scale = jellyScale.Scale + (stretch - jellyScale.Scale) * (1 - math.exp(-18 * dt))
         else
+            jellyScale.Scale = jellyScale.Scale + (1 - jellyScale.Scale) * (1 - math.exp(-20 * dt))
             if dragging then
                 currentX = targetX
                 currentY = targetY
@@ -322,7 +327,6 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 currentX = main.Position.X.Offset
                 currentY = main.Position.Y.Offset
             end
-            main.Rotation = 0
         end
     end)
 
