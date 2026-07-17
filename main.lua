@@ -10,6 +10,9 @@ local dbcooper = false
 local scrollSyncConnected = false
 local blurEnabled = true
 
+local cleanupKeybinds = {}
+local cleanupToggles = {}
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -445,6 +448,17 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     close.TextColor3 = Color3.fromRGB(255, 50, 50)
     close.TextSize = 14
     close.MouseButton1Click:Connect(function()
+        if blur:HasBinding(main) then
+            blur:UnbindFrame(main)
+        end
+        for _, conn in ipairs(cleanupKeybinds) do
+            if conn.Connected then conn:Disconnect() end
+        end
+        for _, toggleInfo in ipairs(cleanupToggles) do
+            if toggleInfo.callback then
+                pcall(toggleInfo.callback, toggleInfo.default)
+            end
+        end
         scrgui:Destroy()
     end)
 
@@ -660,13 +674,14 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local notifdarkness = Instance.new("Frame")
     notifdarkness.Name = "notifdarkness"
-    notifdarkness.Parent = notif
+    notifdarkness.Parent = main
     notifdarkness.AnchorPoint = Vector2.new(0.5, 0.5)
     notifdarkness.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     notifdarkness.BackgroundTransparency = 0.600
     notifdarkness.Position = UDim2.new(0.5, 0, 0.5, 0)
     notifdarkness.Size = UDim2.new(0, 721, 0, 584)
     notifdarkness.ZIndex = 2
+    notifdarkness.Visible = false
 
     local uc_13 = Instance.new("UICorner")
     uc_13.CornerRadius = UDim.new(0, 18)
@@ -779,13 +794,14 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local notif2darkness = Instance.new("Frame")
     notif2darkness.Name = "notif2darkness"
-    notif2darkness.Parent = notif2
+    notif2darkness.Parent = main
     notif2darkness.AnchorPoint = Vector2.new(0.5, 0.5)
     notif2darkness.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     notif2darkness.BackgroundTransparency = 0.600
     notif2darkness.Position = UDim2.new(0.5, 0, 0.5, 0)
     notif2darkness.Size = UDim2.new(0, 721, 0, 584)
     notif2darkness.ZIndex = 2
+    notif2darkness.Visible = false
 
     local uc_16 = Instance.new("UICorner")
     uc_16.CornerRadius = UDim.new(0, 18)
@@ -847,10 +863,15 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end
     updateCursor()
 
-    RunService.RenderStepped:Connect(function()
+    local cursorRenderName = "AppleLibCursorSync"
+    RunService:BindToRenderStep(cursorRenderName, Enum.RenderPriority.Last.Value, function()
         if customCursor.Visible then
             local pos = UserInputService:GetMouseLocation()
             customCursor.Position = UDim2.new(0, pos.X, 0, pos.Y)
+        end
+        if not scrgui.Parent then
+            UserInputService.MouseIconEnabled = true
+            RunService:UnbindFromRenderStep(cursorRenderName)
         end
     end)
 
@@ -1004,6 +1025,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         notificon = icohn
         notif.Size = UDim2.new(0, 240, 0, 280)
         notif.Position = UDim2.new(0.5, 0, 0.5, 40)
+        notifdarkness.Visible = true
         notif.Visible = true
         notifbutton1.Text = b1
 
@@ -1021,6 +1043,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             }):Play()
             task.delay(0.3, function()
                 notif.Visible = false
+                notifdarkness.Visible = false
             end)
         end)
     end
@@ -1032,6 +1055,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         notif2icon = icohn
         notif2.Size = UDim2.new(0, 240, 0, 280)
         notif2.Position = UDim2.new(0.5, 0, 0.5, 40)
+        notif2darkness.Visible = true
         notif2.Visible = true
         notif2button1.Text = b1
         notif2button2.Text = b2
@@ -1051,6 +1075,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             }):Play()
             task.delay(0.3, function()
                 notif2.Visible = false
+                notif2darkness.Visible = false
             end)
         end)
         con2 = notif2button2.MouseButton1Click:Connect(function()
@@ -1063,6 +1088,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             }):Play()
             task.delay(0.3, function()
                 notif2.Visible = false
+                notif2darkness.Visible = false
             end)
         end)
     end
@@ -1292,6 +1318,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         function sec:Switch(name, defaultmode, callback, flag)
             flag = flag or name
             local mode = defaultmode
+            table.insert(cleanupToggles, { default = defaultmode, callback = callback })
             local toggleswitch = Instance.new("TextLabel")
             toggleswitch.Name = "toggleswitch"
             toggleswitch.Parent = workareamain
@@ -2007,13 +2034,14 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end)
 
             ConfigManager.Elements[flag] = { Value = currentKey and currentKey.Name or "None", Set = function(self, val) if val == "None" then currentKey = nil; kbbtn.Text = "None" else currentKey = Enum.KeyCode[val]; kbbtn.Text = val end end }
-            UserInputService.InputBegan:Connect(function(input, gp)
+            local kbConn = UserInputService.InputBegan:Connect(function(input, gp)
                 if not picking and not gp and input.UserInputType == Enum.UserInputType.Keyboard then
                     if currentKey and input.KeyCode == currentKey then
                         if callback then callback() end
                     end
                 end
             end)
+            table.insert(cleanupKeybinds, kbConn)
         end
 
         function sec:Paragraph(title, content)
