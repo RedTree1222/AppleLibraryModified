@@ -1,4 +1,5 @@
 local lib = {}
+lib.FolderName = lib.FolderName
 local sections = {}
 local workareas = {}
 local notifs = {}
@@ -52,13 +53,13 @@ function ConfigManager:Save(name)
             data[flag] = element.Value
         end
     end
-    if makefolder and not isfolder("AppleLibraryModified") then makefolder("AppleLibraryModified") end
-    if makefolder and not isfolder("AppleLibraryModified/Configs") then makefolder("AppleLibraryModified/Configs") end
-    writefile("AppleLibraryModified/Configs/" .. name .. ".json", HttpService:JSONEncode(data))
+    if makefolder and not isfolder(lib.FolderName) then makefolder(lib.FolderName) end
+    if makefolder and not isfolder(lib.FolderName .. "/Configs") then makefolder(lib.FolderName .. "/Configs") end
+    writefile(lib.FolderName .. "/Configs/" .. name .. ".json", HttpService:JSONEncode(data))
 end
 
 function ConfigManager:Load(name)
-    local path = "AppleLibraryModified/Configs/" .. name .. ".json"
+    local path = lib.FolderName .. "/Configs/" .. name .. ".json"
     if isfile and not isfile(path) then return end
     local ok, content = pcall(function() return readfile(path) end)
     if ok and type(content) == "string" and content ~= "" then
@@ -74,7 +75,7 @@ function ConfigManager:Load(name)
 end
 
 function ConfigManager:Delete(name)
-    local path = "AppleLibraryModified/Configs/" .. name .. ".json"
+    local path = lib.FolderName .. "/Configs/" .. name .. ".json"
     if isfile and isfile(path) then
         pcall(function() delfile(path) end)
     elseif pcall(function() return readfile(path) end) then
@@ -84,8 +85,8 @@ end
 
 function ConfigManager:GetConfigs()
     local configs = {}
-    if isfolder("AppleLibraryModified/Configs") then
-        local files = listfiles("AppleLibraryModified/Configs")
+    if isfolder(lib.FolderName .. "/Configs") then
+        local files = listfiles(lib.FolderName .. "/Configs")
         for _, file in ipairs(files) do
             local name = string.match(file, "([^/\\]+)%.json$")
             if name then table.insert(configs, name) end
@@ -96,12 +97,12 @@ end
 
 
 function ConfigManager:SaveAutoLoad(name)
-    if makefolder and not isfolder("AppleLibraryModified") then makefolder("AppleLibraryModified") end
-    writefile("AppleLibraryModified/autoload.txt", name)
+    if makefolder and not isfolder(lib.FolderName) then makefolder(lib.FolderName) end
+    writefile(lib.FolderName .. "/autoload.txt", name)
 end
 
 function ConfigManager:GetAutoLoad()
-    local path = "AppleLibraryModified/autoload.txt"
+    local path = lib.FolderName .. "/autoload.txt"
     if isfile and isfile(path) then
         local ok, content = pcall(function() return readfile(path) end)
         if ok and type(content) == "string" and content ~= "" then
@@ -113,12 +114,12 @@ end
 
 function ConfigManager:SaveTheme(theme)
     self.CurrentTheme = theme
-    if makefolder and not isfolder("AppleLibraryModified") then makefolder("AppleLibraryModified") end
-    writefile("AppleLibraryModified/theme.json", HttpService:JSONEncode({theme = theme}))
+    if makefolder and not isfolder(lib.FolderName) then makefolder(lib.FolderName) end
+    writefile(lib.FolderName .. "/theme.json", HttpService:JSONEncode({theme = theme}))
 end
 
 function ConfigManager:LoadTheme()
-    local path = "AppleLibraryModified/theme.json"
+    local path = lib.FolderName .. "/theme.json"
     if isfile and not isfile(path) then return end
     local ok, content = pcall(function() return readfile(path) end)
     if ok and type(content) == "string" and content ~= "" then
@@ -128,8 +129,6 @@ function ConfigManager:LoadTheme()
         end
     end
 end
-
-ConfigManager:LoadTheme()
 
 local currentTheme = ConfigManager.CurrentTheme
 local currentAccentColor = Color3.fromRGB(21, 103, 251)
@@ -145,6 +144,9 @@ local function registerTheme(instance, propertyName, lightValue, darkValue)
 end
 
 function lib:init(ti, dosplash, visiblekey, deleteprevious)
+    ConfigManager:LoadTheme()
+    currentTheme = ConfigManager.CurrentTheme
+
     if syn then
         cg = game:GetService("CoreGui")
         local oldGui = cg:FindFirstChild("ScreenGui")
@@ -500,7 +502,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         moonbtn.Image = getAsset(currentTheme == "light" and "Assets/blackmoon.png" or "Assets/whitemoon.png")
         for _, item in ipairs(themeElements) do
             pcall(function()
-                item.Instance[item.Property] = (currentTheme == "light") and item.Light or item.Dark
+                if item.IsToggle and item.GetToggleState() then
+                    item.Instance[item.Property] = currentAccentColor
+                else
+                    item.Instance[item.Property] = (currentTheme == "light") and item.Light or item.Dark
+                end
             end)
         end
         for _, v in next, sections do

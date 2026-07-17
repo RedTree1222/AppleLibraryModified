@@ -1,5 +1,7 @@
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/refs/heads/main/main.lua"))()
 
+library.FolderName = "Eclipsed"
+
 local window = library:init("Titlebar", true, Enum.KeyCode.LeftControl, true)
 
 window:Divider("Navigation")
