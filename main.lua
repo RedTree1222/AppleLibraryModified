@@ -536,6 +536,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         for _, v in next, sections do
             if v.BackgroundTransparency == 1 then
                 v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
+            else
+                v.TextColor3 = Color3.fromRGB(255, 255, 255)
             end
         end
     end
