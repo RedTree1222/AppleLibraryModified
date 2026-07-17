@@ -250,23 +250,95 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         game:GetService("Debris"):AddItem(splash, 1)
     end
 
-    local isMob = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-    local cScale = isMob and 0.7 or 1.0
+    local isMob = UserInputService.TouchEnabled
+    local cScale = isMob and 0.85 or 1.0
 
-    local main = Instance.new("CanvasGroup")
+    local main = Instance.new("Frame")
+    main.ClipsDescendants = true
     main.Name = "main"
     main.Parent = scrgui
+
+    local blurFrame = Instance.new("Frame")
+    blurFrame.Name = "blurFrame"
+    blurFrame.Parent = main
+    blurFrame.BackgroundTransparency = 1
+    blurFrame.Position = UDim2.new(0, 4, 0, 4)
+    blurFrame.Size = UDim2.new(1, -8, 1, -8)
+    blurFrame.ZIndex = 0
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.Position = UDim2.new(0.5, 0, 2, 0)
-    main.Size = UDim2.new(0, 721, 0, 584)
+    
+    local function updateMainSize()
+        local vp = workspace.CurrentCamera.ViewportSize
+        local w = math.clamp(721, 400, vp.X - 40)
+        local h = math.clamp(584, 300, vp.Y - 40)
+        main.Size = UDim2.new(0, w, 0, h)
+    end
+    updateMainSize()
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateMainSize)
     registerTheme(main, "BackgroundColor3", Color3.fromRGB(245, 245, 250), Color3.fromRGB(18, 18, 24))
+
+    if isMob then
+        local fab = Instance.new("ImageButton")
+        fab.Name = "MobileFAB"
+        fab.Parent = scrgui
+        fab.AnchorPoint = Vector2.new(1, 0.5)
+        fab.Position = UDim2.new(1, -20, 0.5, 0)
+        fab.Size = UDim2.new(0, 46, 0, 46)
+        fab.BackgroundColor3 = Color3.fromRGB(245, 245, 250)
+        fab.Image = "rbxassetid://12621719043" -- Library icon
+        fab.ImageRectOffset = Vector2.new(0, 0)
+        fab.ImageRectSize = Vector2.new(0, 0)
+        fab.ScaleType = Enum.ScaleType.Fit
+        
+        local fabCorner = Instance.new("UICorner")
+        fabCorner.CornerRadius = UDim.new(1, 0)
+        fabCorner.Parent = fab
+        
+        local fabStroke = Instance.new("UIStroke")
+        fabStroke.Parent = fab
+        fabStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        fabStroke.Color = Color3.fromRGB(41, 41, 41)
+        fabStroke.Thickness = 1.5
+        
+        local fabDrag = false
+        local fabStart = nil
+        local fabStartPos = nil
+        
+        fab.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                fabDrag = true
+                fabStart = input.Position
+                fabStartPos = fab.Position
+            end
+        end)
+        
+        UserInputService.InputChanged:Connect(function(input)
+            if fabDrag and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+                local delta = input.Position - fabStart
+                fab.Position = UDim2.new(fabStartPos.X.Scale, fabStartPos.X.Offset + delta.X, fabStartPos.Y.Scale, fabStartPos.Y.Offset + delta.Y)
+            end
+        end)
+        
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if fabDrag and fabStart then
+                    local dist = (input.Position - fabStart).Magnitude
+                    if dist < 10 then
+                        if window.ToggleVisible then window:ToggleVisible() end
+                    end
+                end
+                fabDrag = false
+            end
+        end)
+    end
 
     local uiscale = Instance.new("UIScale")
     uiscale.Parent = main
     uiscale.Scale = cScale
 
-    main.GroupTransparency = 0.08
-    blur:BindFrame(main, {
+    main.BackgroundTransparency = 0.08
+    blur:BindFrame(blurFrame, {
         Transparency = 0.98,
         Color = Color3.fromRGB(255, 255, 255)
     })
@@ -399,7 +471,6 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local sidebar = Instance.new("ScrollingFrame")
     sidebar.Name = "sidebar"
     sidebar.Parent = main
-    sidebar.Active = true
     registerTheme(sidebar, "BackgroundColor3", Color3.fromRGB(245, 245, 250), Color3.fromRGB(18, 18, 24))
     sidebar.BackgroundTransparency = 1
     sidebar.BorderSizePixel = 0
@@ -460,8 +531,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     close.TextColor3 = Color3.fromRGB(255, 50, 50)
     close.TextSize = 14
     close.MouseButton1Click:Connect(function()
-        if blur:HasBinding(main) then
-            blur:UnbindFrame(main)
+        if blur:HasBinding(blurFrame) then
+            blur:UnbindFrame(blurFrame)
         end
         for _, v in pairs(game:GetService("Lighting"):GetChildren()) do
             if v:IsA("DepthOfFieldEffect") then v:Destroy() end
@@ -472,6 +543,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if cc then cc.Visible = false end
         RunService:UnbindFromRenderStep("AppleLibCursorSync")
         UserInputService.MouseIconEnabled = true
+        task.delay(0.1, function()
+            UserInputService.MouseIconEnabled = true
+        end)
         if visibleKeyConn then visibleKeyConn:Disconnect() end
         for _, conn in ipairs(cleanupKeybinds) do
             if conn.Connected then conn:Disconnect() end
@@ -556,10 +630,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end)
         end
         for _, v in next, sections do
-            if v.BackgroundTransparency == 1 then
-                v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
-            else
+            if v.Name == "sidebar2_selected" then
                 v.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
             end
         end
     end
@@ -653,7 +727,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif.Position = UDim2.new(0.5, 0, 0.5, 0)
     notif.Size = UDim2.new(0, 304, 0, 362)
     notif.Visible = false
-    notif.ZIndex = 3
+    notif.ZIndex = 101
 
     local uc_11 = Instance.new("UICorner")
     uc_11.CornerRadius = UDim.new(0, 18)
@@ -666,7 +740,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notificon.BackgroundTransparency = 1
     notificon.Position = UDim2.new(0.335526317, 0, 0.0994475111, 0)
     notificon.Size = UDim2.new(0, 100, 0, 100)
-    notificon.ZIndex = 3
+    notificon.ZIndex = 102
     notificon.Image = "rbxassetid://4871684504"
     notificon.ImageColor3 = Color3.fromRGB(95, 95, 95)
 
@@ -676,7 +750,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notifbutton1.BackgroundColor3 = currentAccentColor
     notifbutton1.Position = UDim2.new(0.0559210554, 0, 0.817679524, 0)
     notifbutton1.Size = UDim2.new(0, 270, 0, 50)
-    notifbutton1.ZIndex = 3
+    notifbutton1.ZIndex = 102
     notifbutton1.Font = Enum.Font.Gotham
     notifbutton1.Text = "OK"
     notifbutton1.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -704,7 +778,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notifdarkness.BackgroundTransparency = 0.600
     notifdarkness.Position = UDim2.new(0.5, 0, 0.5, 0)
     notifdarkness.Size = UDim2.new(0, 721, 0, 584)
-    notifdarkness.ZIndex = 2
+    notifdarkness.ZIndex = 100
     notifdarkness.Visible = false
 
     local uc_13 = Instance.new("UICorner")
@@ -718,7 +792,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notiftitle.BackgroundTransparency = 1
     notiftitle.Position = UDim2.new(0.167763159, 0, 0.375690609, 0)
     notiftitle.Size = UDim2.new(0, 200, 0, 50)
-    notiftitle.ZIndex = 3
+    notiftitle.ZIndex = 102
     notiftitle.Font = Enum.Font.GothamMedium
     notiftitle.Text = "Notice"
     registerTheme(notiftitle, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
@@ -731,7 +805,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notiftext.BackgroundTransparency = 1
     notiftext.Position = UDim2.new(0.0822368413, 0, 0.513812184, 0)
     notiftext.Size = UDim2.new(0, 254, 0, 66)
-    notiftext.ZIndex = 3
+    notiftext.ZIndex = 102
     notiftext.Font = Enum.Font.Gotham
     notiftext.Text = "We would like to contact you regarding your car's extended warranty."
     registerTheme(notiftext, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
@@ -746,7 +820,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif2.Position = UDim2.new(0.5, 0, 0.5, 0)
     notif2.Size = UDim2.new(0, 304, 0, 362)
     notif2.Visible = false
-    notif2.ZIndex = 3
+    notif2.ZIndex = 101
 
     local uc_14 = Instance.new("UICorner")
     uc_14.CornerRadius = UDim.new(0, 18)
@@ -759,7 +833,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif2icon.BackgroundTransparency = 1
     notif2icon.Position = UDim2.new(0.335526317, 0, 0.0994475111, 0)
     notif2icon.Size = UDim2.new(0, 100, 0, 100)
-    notif2icon.ZIndex = 3
+    notif2icon.ZIndex = 102
     notif2icon.Image = "rbxassetid://12608260095"
     notif2icon.ImageColor3 = Color3.fromRGB(95, 95, 95)
 
@@ -770,7 +844,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif2title.BackgroundTransparency = 1
     notif2title.Position = UDim2.new(0.167763159, 0, 0.375690609, 0)
     notif2title.Size = UDim2.new(0, 200, 0, 50)
-    notif2title.ZIndex = 3
+    notif2title.ZIndex = 102
     notif2title.Font = Enum.Font.GothamMedium
     notif2title.Text = "Notice"
     registerTheme(notif2title, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
@@ -783,7 +857,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif2text.BackgroundTransparency = 1
     notif2text.Position = UDim2.new(0.0822368413, 0, 0.513812184, 0)
     notif2text.Size = UDim2.new(0, 254, 0, 66)
-    notif2text.ZIndex = 3
+    notif2text.ZIndex = 102
     notif2text.Font = Enum.Font.Gotham
     notif2text.Text = "We would like to contact you regarding your car's extended warranty."
     registerTheme(notif2text, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
@@ -796,7 +870,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif2button1.BackgroundColor3 = currentAccentColor
     notif2button1.Position = UDim2.new(0.0559210517, 0, 0.715469658, 0)
     notif2button1.Size = UDim2.new(0, 270, 0, 40)
-    notif2button1.ZIndex = 3
+    notif2button1.ZIndex = 102
     notif2button1.Font = Enum.Font.Gotham
     notif2button1.Text = "Sure!"
     notif2button1.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -824,7 +898,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif2darkness.BackgroundTransparency = 0.600
     notif2darkness.Position = UDim2.new(0.5, 0, 0.5, 0)
     notif2darkness.Size = UDim2.new(0, 721, 0, 584)
-    notif2darkness.ZIndex = 2
+    notif2darkness.ZIndex = 100
     notif2darkness.Visible = false
 
     local uc_16 = Instance.new("UICorner")
@@ -838,7 +912,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     notif2button2.BackgroundTransparency = 1
     notif2button2.Position = UDim2.new(0.0526315793, 0, 0.842541456, 0)
     notif2button2.Size = UDim2.new(0, 270, 0, 40)
-    notif2button2.ZIndex = 3
+    notif2button2.ZIndex = 102
     notif2button2.Font = Enum.Font.Gotham
     notif2button2.Text = "Go away."
     registerTheme(notif2button2, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
@@ -869,7 +943,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     customCursor.ZIndex = 100000
     customCursor.Visible = false
 
-    local useCustomCursor = true
+    local useCustomCursor = not isMob
     local function updateCursor()
         if customCursorAsset ~= "" and useCustomCursor then
             customCursor.Image = customCursorAsset
@@ -910,26 +984,28 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         updateCursor()
         if visible then
             if blurEnabled then
-                blur:BindFrame(main, {
+                blur:BindFrame(blurFrame, {
                     Transparency = 0.98,
                     Color = Color3.fromRGB(255, 255, 255)
                 })
             end
             targetX = lastX
             targetY = lastY
-            task.wait(0.5)
-            dbcooper = false
-            isAnimatingVis = false
+            task.delay(0.5, function() 
+                dbcooper = false 
+                isAnimatingVis = false 
+            end)
         else
-            if blur:HasBinding(main) then
-                blur:UnbindFrame(main)
+            if blur:HasBinding(blurFrame) then
+                blur:UnbindFrame(blurFrame)
             end
             lastX = targetX
             lastY = targetY
             targetY = 2000
-            task.wait(0.5)
-            dbcooper = false
-            isAnimatingVis = false
+            task.delay(0.5, function() 
+                dbcooper = false 
+                isAnimatingVis = false 
+            end)
         end
     end
 
@@ -953,16 +1029,18 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end
 
     local activeNotifs = {}
-    local notifBaseY = 0.0794737339
-    local notifSpacing = 130
+    local notifBaseY = isMob and 0.15 or 0.85
+    local notifSpacing = isMob and 85 or 105
 
     -- temp notif
     function window:TempNotify(text1, text2, icon)
         local function refreshPositions()
             for i, data in ipairs(activeNotifs) do
-                local targetY = notifBaseY + (i - 1) * notifSpacing / workspace.CurrentCamera.ViewportSize.Y
+                local offset = (i - 1) * notifSpacing / workspace.CurrentCamera.ViewportSize.Y
+                local targetY = isMob and (notifBaseY + offset) or (notifBaseY - offset)
+                local targetX = isMob and -160 or -180
                 TweenService:Create(data.frame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
-                    Position = UDim2.new(1, -250, targetY, 0)
+                    Position = UDim2.new(1, targetX, targetY, 0)
                 }):Play()
             end
         end
@@ -974,9 +1052,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         registerTheme(tempnotif, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(40, 40, 40))
         tempnotif.BackgroundTransparency = 0.150
         tempnotif.Position = UDim2.new(1, 200, notifBaseY, 0)
-        tempnotif.Size = UDim2.new(0, 447, 0, 117)
+        tempnotif.Size = isMob and UDim2.new(0, 280, 0, 75) or UDim2.new(0, 320, 0, 90)
         tempnotif.Visible = true
-        tempnotif.ZIndex = 4
+        tempnotif.ZIndex = 101
 
         local uc_21 = Instance.new("UICorner")
         uc_21.CornerRadius = UDim.new(0, 18)
@@ -987,13 +1065,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         t2.Parent = tempnotif
         t2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         t2.BackgroundTransparency = 1
-        t2.Position = UDim2.new(0.236927822, 0, 0.470085472, 0)
-        t2.Size = UDim2.new(0, 326, 0, 52)
-        t2.ZIndex = 4
+        t2.Position = UDim2.new(0, 65, 0, 34)
+        t2.Size = UDim2.new(1, -75, 0, 35)
+        t2.ZIndex = 102
         t2.Font = Enum.Font.Gotham
         t2.Text = text2
         registerTheme(t2, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-        t2.TextSize = 16
+        t2.TextSize = 13
         t2.TextWrapped = true
         t2.TextXAlignment = Enum.TextXAlignment.Left
         t2.TextYAlignment = Enum.TextYAlignment.Top
@@ -1003,13 +1081,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         t1.Parent = tempnotif
         t1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         t1.BackgroundTransparency = 1
-        t1.Position = UDim2.new(0.234690696, 0, 0.193464488, 0)
-        t1.Size = UDim2.new(0, 327, 0, 25)
-        t1.ZIndex = 4
+        t1.Position = UDim2.new(0, 65, 0, 12)
+        t1.Size = UDim2.new(1, -75, 0, 20)
+        t1.ZIndex = 102
         t1.Font = Enum.Font.GothamMedium
         t1.Text = text1
         registerTheme(t1, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-        t1.TextSize = 28
+        t1.TextSize = 16
         t1.TextXAlignment = Enum.TextXAlignment.Left
 
         local ticon = Instance.new("ImageLabel")
@@ -1017,9 +1095,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         ticon.Parent = tempnotif
         ticon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         ticon.BackgroundTransparency = 1
-        ticon.Position = UDim2.new(0.0311112702, 0, 0.193464488, 0)
-        ticon.Size = UDim2.new(0, 71, 0, 71)
-        ticon.ZIndex = 4
+        ticon.Position = UDim2.new(0, 15, 0.5, -20)
+        ticon.Size = UDim2.new(0, 40, 0, 40)
+        ticon.ZIndex = 102
         ticon.Image = icon
         ticon.ImageColor3 = Color3.fromRGB(95, 95, 95)
         ticon.ScaleType = Enum.ScaleType.Fit
@@ -1031,7 +1109,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         tshadow.BackgroundTransparency = 1
         tshadow.Position = UDim2.new(0.5, 0, 0.5, 0)
         tshadow.Size = UDim2.new(1.12, 0, 1.20000005, 0)
-        tshadow.ZIndex = 3
+        tshadow.ZIndex = 100
         tshadow.Image = "rbxassetid://313486536"
         tshadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
         tshadow.ImageTransparency = 0.400
@@ -1163,7 +1241,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sidebar2.BackgroundColor3 = currentAccentColor
         sidebar2.BackgroundTransparency = 1
         sidebar2.Size = UDim2.new(0, 226, 0, 34)
-        sidebar2.ZIndex = 2
+        sidebar2.ZIndex = 20
         sidebar2.AutoButtonColor = false
         sidebar2.Font = Enum.Font.GothamMedium
         sidebar2.Text = name
@@ -1178,7 +1256,6 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         local workareamain = Instance.new("ScrollingFrame")
         workareamain.Name = "workareamain"
         workareamain.Parent = workarea
-        workareamain.Active = true
         workareamain.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         workareamain.BackgroundTransparency = 1
         workareamain.BorderSizePixel = 0
@@ -1213,9 +1290,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             for b, v in next, sections do
                 v.BackgroundTransparency = 1
                 v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
+                v.Name = "sidebar2"
             end
             sidebar2.BackgroundTransparency = 1
             sidebar2.TextColor3 = Color3.fromRGB(255, 255, 255)
+            sidebar2.Name = "sidebar2_selected"
 
             local isNewHighlight = false
             local highlight = main:FindFirstChild("TabHighlight")
@@ -1307,7 +1386,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             button.Text = name
             button.Parent = workareamain
             button.Size = UDim2.new(1, 0, 0, 37)
-            button.ZIndex = 2
+            button.ZIndex = 20
             button.Font = Enum.Font.GothamBold
             button.TextSize = 14
             
@@ -1371,22 +1450,29 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             flag = flag or name
             local mode = defaultmode
             table.insert(cleanupToggles, { default = defaultmode, callback = callback })
-            local toggleswitch = Instance.new("TextLabel")
+            local toggleswitch = Instance.new("Frame")
             toggleswitch.Name = "toggleswitch"
             toggleswitch.Parent = workareamain
             toggleswitch.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             toggleswitch.BackgroundTransparency = 1
-            toggleswitch.BorderSizePixel = 2
+            toggleswitch.BorderSizePixel = 0
             toggleswitch.Size = UDim2.new(1, 0, 0, 37)
-            toggleswitch.Font = Enum.Font.GothamMedium
-            toggleswitch.Text = name
-            registerTheme(toggleswitch, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
-            toggleswitch.TextSize = 16
-            toggleswitch.TextWrapped = true
-            toggleswitch.TextXAlignment = Enum.TextXAlignment.Left
+
+            local switchlabel = Instance.new("TextLabel")
+            switchlabel.Name = "switchlabel"
+            switchlabel.Parent = toggleswitch
+            switchlabel.BackgroundTransparency = 1
+            switchlabel.Size = UDim2.new(1, -60, 1, 0)
+            switchlabel.Font = Enum.Font.GothamMedium
+            switchlabel.Text = name
+            registerTheme(switchlabel, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            switchlabel.TextSize = 16
+            switchlabel.TextWrapped = true
+            switchlabel.TextXAlignment = Enum.TextXAlignment.Left
 
             local Frame = Instance.new("TextButton")
             Frame.Parent = toggleswitch
+            Frame.ZIndex = 20
             Frame.Position = UDim2.new(1, -56, 0.5, -14)
             Frame.Size = UDim2.new(0, 56, 0, 28)
             Frame.Text = ""
@@ -1398,6 +1484,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
             local TextButton = Instance.new("TextButton")
             TextButton.Parent = Frame
+            TextButton.ZIndex = 21
             TextButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             TextButton.Size = UDim2.new(0, 26, 0, 26)
             TextButton.AutoButtonColor = false
@@ -1444,25 +1531,32 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
             Frame.MouseButton1Click:Connect(toggle)
             TextButton.MouseButton1Click:Connect(toggle)
+
             ConfigManager.Elements[flag] = { Value = mode, Set = function(self, val) if mode ~= val then toggle() end end }
         end
 
         -- text box
         function sec:TextField(name, placeholder, callback, flag)
             flag = flag or name
-            local textfield = Instance.new("TextLabel")
+            local textfield = Instance.new("Frame")
             textfield.Name = "textfield"
             textfield.Parent = workareamain
             textfield.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             textfield.BackgroundTransparency = 1
-            textfield.BorderSizePixel = 2
+            textfield.BorderSizePixel = 0
             textfield.Size = UDim2.new(1, 0, 0, 37)
-            textfield.Font = Enum.Font.GothamMedium
-            textfield.Text = name
-            registerTheme(textfield, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
-            textfield.TextSize = 16
-            textfield.TextWrapped = true
-            textfield.TextXAlignment = Enum.TextXAlignment.Left
+
+            local textfieldlabel = Instance.new("TextLabel")
+            textfieldlabel.Name = "textfieldlabel"
+            textfieldlabel.Parent = textfield
+            textfieldlabel.BackgroundTransparency = 1
+            textfieldlabel.Size = UDim2.new(1, -240, 1, 0)
+            textfieldlabel.Font = Enum.Font.GothamMedium
+            textfieldlabel.Text = name
+            registerTheme(textfieldlabel, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            textfieldlabel.TextSize = 16
+            textfieldlabel.TextWrapped = true
+            textfieldlabel.TextXAlignment = Enum.TextXAlignment.Left
 
             local Frame_2 = Instance.new("Frame")
             Frame_2.Parent = textfield
@@ -1476,6 +1570,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
             local TextBox = Instance.new("TextBox")
             TextBox.Parent = Frame_2
+            TextBox.ZIndex = 20
             TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             TextBox.BackgroundTransparency = 1
             TextBox.BorderColor3 = Color3.fromRGB(27, 42, 53)
@@ -1505,19 +1600,25 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         -- slider
         function sec:Slider(name, min, max, default, callback, flag)
             flag = flag or name
-            local sliderrow = Instance.new("TextLabel")
+            local sliderrow = Instance.new("Frame")
             sliderrow.Name = "sliderrow"
             sliderrow.Parent = workareamain
             sliderrow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             sliderrow.BackgroundTransparency = 1
             sliderrow.BorderSizePixel = 0
             sliderrow.Size = UDim2.new(1, 0, 0, 37)
-            sliderrow.Font = Enum.Font.GothamMedium
-            sliderrow.Text = name
-            registerTheme(sliderrow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
-            sliderrow.TextSize = 16
-            sliderrow.TextWrapped = true
-            sliderrow.TextXAlignment = Enum.TextXAlignment.Left
+
+            local sliderlabel = Instance.new("TextLabel")
+            sliderlabel.Name = "sliderlabel"
+            sliderlabel.Parent = sliderrow
+            sliderlabel.BackgroundTransparency = 1
+            sliderlabel.Size = UDim2.new(1, -250, 1, 0)
+            sliderlabel.Font = Enum.Font.GothamMedium
+            sliderlabel.Text = name
+            registerTheme(sliderlabel, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            sliderlabel.TextSize = 16
+            sliderlabel.TextWrapped = true
+            sliderlabel.TextXAlignment = Enum.TextXAlignment.Left
 
             local valuelabel = Instance.new("TextLabel")
             valuelabel.Name = "valuelabel"
@@ -1562,7 +1663,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             thumb.Position = UDim2.new(0, -7, 0.5, -7)
             thumb.Text = ""
             thumb.AutoButtonColor = false
-            thumb.ZIndex = 4
+            thumb.ZIndex = 20
             thumb.BorderSizePixel = 0
 
             local uc_t = Instance.new("UICorner")
@@ -1591,12 +1692,6 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 end
             end)
 
-            thumb.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    draggingSlider = false
-                end
-            end)
-
             rail.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                     draggingSlider = true
@@ -1605,7 +1700,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 end
             end)
 
-            rail.InputEnded:Connect(function(input)
+            UserInputService.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                     draggingSlider = false
                 end
@@ -1629,22 +1724,29 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         -- drop list
         function sec:Dropdown(name, options, default, callback, flag)
             flag = flag or name
-            local droprow = Instance.new("TextLabel")
+            local droprow = Instance.new("Frame")
             droprow.Name = "droprow"
             droprow.Parent = workareamain
             droprow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             droprow.BackgroundTransparency = 1
             droprow.BorderSizePixel = 0
             droprow.Size = UDim2.new(1, 0, 0, 37)
-            droprow.Font = Enum.Font.GothamMedium
-            droprow.Text = name
-            registerTheme(droprow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
-            droprow.TextSize = 16
-            droprow.TextWrapped = true
-            droprow.TextXAlignment = Enum.TextXAlignment.Left
+
+            local droplabel_top = Instance.new("TextLabel")
+            droplabel_top.Name = "droplabel_top"
+            droplabel_top.Parent = droprow
+            droplabel_top.BackgroundTransparency = 1
+            droplabel_top.Size = UDim2.new(1, -240, 1, 0)
+            droplabel_top.Font = Enum.Font.GothamMedium
+            droplabel_top.Text = name
+            registerTheme(droplabel_top, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            droplabel_top.TextSize = 16
+            droplabel_top.TextWrapped = true
+            droplabel_top.TextXAlignment = Enum.TextXAlignment.Left
 
             local dropbtn = Instance.new("TextButton")
             dropbtn.Name = "dropbtn"
+            dropbtn.ZIndex = 20
             dropbtn.Parent = droprow
             registerTheme(dropbtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
             dropbtn.Position = UDim2.new(1, -233, 0.5, -17)
@@ -1688,7 +1790,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             listframe.Size = UDim2.new(1, 0, 0, 0)
             listframe.ClipsDescendants = true
             listframe.Visible = false
-            listframe.ZIndex = 5
+            listframe.ZIndex = 30
             listframe.CanvasSize = UDim2.new(0, 0, 0, 0)
             listframe.AutomaticCanvasSize = Enum.AutomaticSize.Y
             listframe.ScrollBarThickness = 2
@@ -1748,7 +1850,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     registerTheme(optbtn, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
                     optbtn.TextSize = 14
                     optbtn.AutoButtonColor = false
-                    optbtn.ZIndex = 6
+                    optbtn.ZIndex = 35
 
                     local uc_ob = Instance.new("UICorner")
                     uc_ob.CornerRadius = UDim.new(0, 7)
@@ -1762,6 +1864,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     end)
 
                     optbtn.MouseButton1Click:Connect(function()
+                        TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
                         currentValue = opt
                         if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
                         droplabel.Text = opt
@@ -1803,22 +1906,29 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         function sec:MultiDropdown(name, options, defaultOptions, callback, flag)
             flag = flag or name
             defaultOptions = defaultOptions or {}
-            local droprow = Instance.new("TextLabel")
+            local droprow = Instance.new("Frame")
             droprow.Name = "droprow"
             droprow.Parent = workareamain
             droprow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             droprow.BackgroundTransparency = 1
             droprow.BorderSizePixel = 0
             droprow.Size = UDim2.new(1, 0, 0, 37)
-            droprow.Font = Enum.Font.GothamMedium
-            droprow.Text = name
-            registerTheme(droprow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
-            droprow.TextSize = 16
-            droprow.TextWrapped = true
-            droprow.TextXAlignment = Enum.TextXAlignment.Left
+
+            local droplabel_top = Instance.new("TextLabel")
+            droplabel_top.Name = "droplabel_top"
+            droplabel_top.Parent = droprow
+            droplabel_top.BackgroundTransparency = 1
+            droplabel_top.Size = UDim2.new(1, -240, 1, 0)
+            droplabel_top.Font = Enum.Font.GothamMedium
+            droplabel_top.Text = name
+            registerTheme(droplabel_top, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            droplabel_top.TextSize = 16
+            droplabel_top.TextWrapped = true
+            droplabel_top.TextXAlignment = Enum.TextXAlignment.Left
 
             local dropbtn = Instance.new("TextButton")
             dropbtn.Name = "dropbtn"
+            dropbtn.ZIndex = 20
             dropbtn.Parent = droprow
             registerTheme(dropbtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
             dropbtn.Position = UDim2.new(1, -233, 0.5, -17)
@@ -1871,7 +1981,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             listframe.Size = UDim2.new(1, 0, 0, 0)
             listframe.ClipsDescendants = true
             listframe.Visible = false
-            listframe.ZIndex = 5
+            listframe.ZIndex = 30
             listframe.CanvasSize = UDim2.new(0, 0, 0, 0)
             listframe.AutomaticCanvasSize = Enum.AutomaticSize.Y
             listframe.ScrollBarThickness = 2
@@ -1943,7 +2053,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     
                     optbtn.TextSize = 14
                     optbtn.AutoButtonColor = false
-                    optbtn.ZIndex = 6
+                    optbtn.ZIndex = 35
 
                     local uc_ob = Instance.new("UICorner")
                     uc_ob.CornerRadius = UDim.new(0, 7)
@@ -2012,19 +2122,25 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         -- clr picker
         function sec:ColorPicker(name, default, callback, flag)
             flag = flag or name
-            local cprow = Instance.new("TextLabel")
+            local cprow = Instance.new("Frame")
             cprow.Name = "cprow"
             cprow.Parent = workareamain
             cprow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             cprow.BackgroundTransparency = 1
             cprow.BorderSizePixel = 0
             cprow.Size = UDim2.new(1, 0, 0, 37)
-            cprow.Font = Enum.Font.GothamMedium
-            cprow.Text = name
-            registerTheme(cprow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
-            cprow.TextSize = 16
-            cprow.TextWrapped = true
-            cprow.TextXAlignment = Enum.TextXAlignment.Left
+
+            local cplabel = Instance.new("TextLabel")
+            cplabel.Name = "cplabel"
+            cplabel.Parent = cprow
+            cplabel.BackgroundTransparency = 1
+            cplabel.Size = UDim2.new(1, -80, 1, 0)
+            cplabel.Font = Enum.Font.GothamMedium
+            cplabel.Text = name
+            registerTheme(cplabel, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            cplabel.TextSize = 16
+            cplabel.TextWrapped = true
+            cplabel.TextXAlignment = Enum.TextXAlignment.Left
 
             local preview = Instance.new("TextButton")
             preview.Name = "preview"
@@ -2034,7 +2150,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             preview.Size = UDim2.new(0, 70, 0, 28)
             preview.Text = ""
             preview.AutoButtonColor = false
-            preview.ZIndex = 3
+            preview.ZIndex = 20
             preview.BorderSizePixel = 0
 
             local uc_cp = Instance.new("UICorner")
@@ -2177,21 +2293,25 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             hsvmap.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                     draggingHSV = true
+                    if workareamain then workareamain.ScrollingEnabled = false end
                 end
             end)
             hsvmap.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                     draggingHSV = false
+                    if workareamain then workareamain.ScrollingEnabled = true end
                 end
             end)
             huerail.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                     draggingHue = true
+                    if workareamain then workareamain.ScrollingEnabled = false end
                 end
             end)
             huerail.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                     draggingHue = false
+                    if workareamain then workareamain.ScrollingEnabled = true end
                 end
             end)
 
@@ -2249,19 +2369,25 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         -- keybind
         function sec:Keybind(name, default, callback, flag)
             flag = flag or name
-            local kbrow = Instance.new("TextLabel")
+            local kbrow = Instance.new("Frame")
             kbrow.Name = "kbrow"
             kbrow.Parent = workareamain
             kbrow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             kbrow.BackgroundTransparency = 1
             kbrow.BorderSizePixel = 0
             kbrow.Size = UDim2.new(1, 0, 0, 37)
-            kbrow.Font = Enum.Font.GothamMedium
-            kbrow.Text = name
-            registerTheme(kbrow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
-            kbrow.TextSize = 16
-            kbrow.TextWrapped = true
-            kbrow.TextXAlignment = Enum.TextXAlignment.Left
+
+            local kblabel = Instance.new("TextLabel")
+            kblabel.Name = "kblabel"
+            kblabel.Parent = kbrow
+            kblabel.BackgroundTransparency = 1
+            kblabel.Size = UDim2.new(1, -80, 1, 0)
+            kblabel.Font = Enum.Font.GothamMedium
+            kblabel.Text = name
+            registerTheme(kblabel, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            kblabel.TextSize = 16
+            kblabel.TextWrapped = true
+            kblabel.TextXAlignment = Enum.TextXAlignment.Left
 
             local kbbtn = Instance.new("TextButton")
             kbbtn.Name = "kbbtn"
@@ -2274,7 +2400,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             kbbtn.TextSize = 14
             kbbtn.AutoButtonColor = false
             kbbtn.Text = default and default.Name or "None"
-            kbbtn.ZIndex = 3
+            kbbtn.ZIndex = 20
             kbbtn.BorderSizePixel = 0
 
             local uc_kb = Instance.new("UICorner")
@@ -2298,8 +2424,18 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 task.wait(0.2)
 
                 local con
+                local cancelled = false
+                task.delay(5, function()
+                    if picking and not cancelled then
+                        picking = false
+                        kbbtn.Text = currentKey and currentKey.Name or "None"
+                        kbbtn.TextColor3 = currentAccentColor
+                        if con then con:Disconnect() end
+                    end
+                end)
                 con = UserInputService.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.Keyboard then
+                        cancelled = true
                         currentKey = input.KeyCode
                         if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentKey.Name end
                         kbbtn.Text = input.KeyCode.Name
@@ -2443,7 +2579,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end, "Settings_Crosshair")
 
         setsec:Slider("UI Transparency", 0, 100, 15, function(v)
-            main.GroupTransparency = v / 100
+            main.BackgroundTransparency = v / 100
         end, "Settings_UITransparency")
         
         local function matchColor(c1, c2)
@@ -2502,13 +2638,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         setsec:Switch("Blur Background", true, function(v)
             blurEnabled = v
             if v and visible then
-                blur:BindFrame(main, {
+                blur:BindFrame(blurFrame, {
                     Transparency = 0.98,
                     Color = Color3.fromRGB(255, 255, 255)
                 })
             else
-                if blur:HasBinding(main) then
-                    blur:UnbindFrame(main)
+                if blur:HasBinding(blurFrame) then
+                    blur:UnbindFrame(blurFrame)
                 end
             end
         end, "Settings_BlurBackground")
