@@ -8,6 +8,7 @@ local notifs = {}
 local visible = true
 local dbcooper = false
 local scrollSyncConnected = false
+local blurEnabled = true
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -861,12 +862,21 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         isAnimatingVis = true
         updateCursor()
         if visible then
+            if blurEnabled then
+                blur:BindFrame(main, {
+                    Transparency = 0.98,
+                    Color = Color3.fromRGB(255, 255, 255)
+                })
+            end
             targetX = lastX
             targetY = lastY
             task.wait(0.5)
             dbcooper = false
             isAnimatingVis = false
         else
+            if blur:HasBinding(main) then
+                blur:UnbindFrame(main)
+            end
             lastX = targetX
             lastY = targetY
             targetY = 2000
@@ -2183,7 +2193,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end, "Settings_TransparentSidebar")
 
         setsec:Switch("Blur Background", true, function(v)
-            if v then
+            blurEnabled = v
+            if v and visible then
                 blur:BindFrame(main, {
                     Transparency = 0.98,
                     Color = Color3.fromRGB(255, 255, 255)
