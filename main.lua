@@ -451,6 +451,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if blur:HasBinding(main) then
             blur:UnbindFrame(main)
         end
+        RunService:UnbindFromRenderStep("AppleLibCursorSync")
+        UserInputService.MouseIconEnabled = true
+        if visibleKeyConn then visibleKeyConn:Disconnect() end
         for _, conn in ipairs(cleanupKeybinds) do
             if conn.Connected then conn:Disconnect() end
         end
@@ -909,11 +912,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
     end
 
+    local visibleKeyConn
     if visiblekey then
         minimize.MouseButton1Click:Connect(function()
             window:ToggleVisible()
         end)
-        UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        visibleKeyConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if input.KeyCode == visiblekey then
                 window:ToggleVisible()
             end
@@ -927,21 +931,27 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end)
     end
 
+    local activeNotifs = {}
+    local notifBaseY = 0.0794737339
+    local notifSpacing = 130
+
     function window:TempNotify(text1, text2, icon)
-        for b, v in next, scrgui:GetChildren() do
-            if v.Name == "tempnotif" then
-                TweenService:Create(v, TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
-                    Position = v.Position + UDim2.new(0, 0, 0, 130)
+        local function refreshPositions()
+            for i, data in ipairs(activeNotifs) do
+                local targetY = notifBaseY + (i - 1) * notifSpacing / workspace.CurrentCamera.ViewportSize.Y
+                TweenService:Create(data.frame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+                    Position = UDim2.new(1, -250, targetY, 0)
                 }):Play()
             end
         end
+
         local tempnotif = Instance.new("Frame")
         tempnotif.Name = "tempnotif"
         tempnotif.Parent = scrgui
         tempnotif.AnchorPoint = Vector2.new(0.5, 0.5)
         registerTheme(tempnotif, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(40, 40, 40))
         tempnotif.BackgroundTransparency = 0.150
-        tempnotif.Position = UDim2.new(1, 200, 0.0794737339, 0)
+        tempnotif.Position = UDim2.new(1, 200, notifBaseY, 0)
         tempnotif.Size = UDim2.new(0, 447, 0, 117)
         tempnotif.Visible = true
         tempnotif.ZIndex = 4
@@ -1005,20 +1015,28 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         tshadow.ImageTransparency = 0.400
         tshadow.TileSize = UDim2.new(0, 1, 0, 1)
 
-        local finalPos = UDim2.new(1, -250, 0.0794737339, 0)
-        TweenService:Create(tempnotif, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
-            Position = finalPos
-        }):Play()
+        local entry = { frame = tempnotif }
+        table.insert(activeNotifs, entry)
+        refreshPositions()
 
         task.delay(4.5, function()
+            local exitPos = UDim2.new(1, 500, tempnotif.Position.Y.Scale, tempnotif.Position.Y.Offset)
             TweenService:Create(tempnotif, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.In), {
-                Position = finalPos + UDim2.new(0, 500, 0, 0)
+                Position = exitPos
             }):Play()
             task.delay(0.5, function()
+                for i, data in ipairs(activeNotifs) do
+                    if data == entry then
+                        table.remove(activeNotifs, i)
+                        break
+                    end
+                end
                 tempnotif:Destroy()
+                refreshPositions()
             end)
         end)
     end
+
 
     function window:Notify(txt1, txt2, b1, icohn, callback)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
