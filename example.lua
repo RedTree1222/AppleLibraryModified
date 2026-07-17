@@ -1,8 +1,9 @@
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/refs/heads/main/main.lua"))()
 
 library.FolderName = "Example"
+library.ButtonStyle = "Modern"
 
-local window = library:init("Titlebar", true, Enum.KeyCode.LeftControl, true)
+local window = library:init("Example", true, Enum.KeyCode.LeftControl, true)
 
 window:Divider("Navigation")
 
@@ -24,7 +25,6 @@ sectionA:TextField("Enter text", "Type here...", function(a)
     print(a)
 end)
 
-sectionA:Divider("New")
 
 sectionA:Slider("Slider", 0, 100, 50, function(v)
     print(v)

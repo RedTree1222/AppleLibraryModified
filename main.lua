@@ -1072,6 +1072,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         local sec = {}
 
         function sec:Select()
+            if workareamain.Visible then return end
+
             for b, v in next, sections do
                 v.BackgroundTransparency = 1
                 v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
@@ -1104,7 +1106,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                         if activeHighlight then
                             local activeTab = nil
                             for _, s in ipairs(sections) do
-                                if s.BackgroundTransparency == 1 and s.TextColor3 == Color3.fromRGB(255, 255, 255) then
+                                if s.TextColor3 == Color3.fromRGB(255, 255, 255) then
                                     activeTab = s
                                     break
                                 end
@@ -1122,7 +1124,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             if isNewHighlight then
                 highlight.Position = UDim2.new(0, targetX, 0, targetY)
             else
-                TweenService:Create(highlight, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                TweenService:Create(highlight, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                     Position = UDim2.new(0, targetX, 0, targetY)
                 }):Play()
             end
@@ -1134,7 +1136,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
             workareamain.Visible = true
             workareamain.Position = UDim2.new(0, 0, 0, 76)
-            TweenService:Create(workareamain, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            TweenService:Create(workareamain, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 Position = UDim2.new(0, 0, 0, 56)
             }):Play()
         end
