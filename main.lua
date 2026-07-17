@@ -272,6 +272,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local dragging = false
     local activeResize = false
+    local isAnimatingVis = false
     local dragStart
     local startPos
     local targetX = main.Position.X.Offset
@@ -305,7 +306,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end)
 
     main:GetPropertyChangedSignal("Position"):Connect(function()
-        if not dragging and not activeResize then
+        if not dragging and not activeResize and not isAnimatingVis then
             targetX = main.Position.X.Offset
             targetY = main.Position.Y.Offset
         end
@@ -857,18 +858,21 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if dbcooper then return end
         visible = not visible
         dbcooper = true
+        isAnimatingVis = true
         updateCursor()
         if visible then
             targetX = lastX
             targetY = lastY
             task.wait(0.5)
             dbcooper = false
+            isAnimatingVis = false
         else
             lastX = targetX
             lastY = targetY
             targetY = 2000
             task.wait(0.5)
             dbcooper = false
+            isAnimatingVis = false
         end
     end
 
@@ -893,7 +897,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     function window:TempNotify(text1, text2, icon)
         for b, v in next, scrgui:GetChildren() do
             if v.Name == "tempnotif" then
-                v.Position += UDim2.new(0, 0, 0, 130)
+                TweenService:Create(v, TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+                    Position = v.Position + UDim2.new(0, 0, 0, 130)
+                }):Play()
             end
         end
         local tempnotif = Instance.new("Frame")
@@ -902,7 +908,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         tempnotif.AnchorPoint = Vector2.new(0.5, 0.5)
         registerTheme(tempnotif, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(40, 40, 40))
         tempnotif.BackgroundTransparency = 0.150
-        tempnotif.Position = UDim2.new(1, -250, 0.0794737339, 0)
+        tempnotif.Position = UDim2.new(1, 200, 0.0794737339, 0)
         tempnotif.Size = UDim2.new(0, 447, 0, 117)
         tempnotif.Visible = true
         tempnotif.ZIndex = 4
@@ -965,7 +971,20 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         tshadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
         tshadow.ImageTransparency = 0.400
         tshadow.TileSize = UDim2.new(0, 1, 0, 1)
-        game:GetService("Debris"):AddItem(tempnotif, 5)
+
+        local finalPos = UDim2.new(1, -250, 0.0794737339, 0)
+        TweenService:Create(tempnotif, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+            Position = finalPos
+        }):Play()
+
+        task.delay(4.5, function()
+            TweenService:Create(tempnotif, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.In), {
+                Position = finalPos + UDim2.new(0, 500, 0, 0)
+            }):Play()
+            task.delay(0.5, function()
+                tempnotif:Destroy()
+            end)
+        end)
     end
 
     function window:Notify(txt1, txt2, b1, icohn, callback)
@@ -973,15 +992,27 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         notiftitle.Text = txt1
         notiftext.Text = txt2
         notificon = icohn
+        notif.Size = UDim2.new(0, 240, 0, 280)
+        notif.Position = UDim2.new(0.5, 0, 0.5, 40)
         notif.Visible = true
         notifbutton1.Text = b1
-        if callback then
-            con1 = notifbutton1.MouseButton1Click:Connect(function()
-                con1:Disconnect()
-                callback()
+
+        TweenService:Create(notif, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 304, 0, 362),
+            Position = UDim2.new(0.5, 0, 0.5, 0)
+        }):Play()
+
+        con1 = notifbutton1.MouseButton1Click:Connect(function()
+            if con1 then con1:Disconnect() end
+            if callback then callback() end
+            TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 240, 0, 280),
+                Position = UDim2.new(0.5, 0, 0.5, 40)
+            }):Play()
+            task.delay(0.3, function()
                 notif.Visible = false
             end)
-        end
+        end)
     end
 
     function window:Notify2(txt1, txt2, b1, b2, icohn, callback, callback2)
@@ -989,23 +1020,41 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         notif2title.Text = txt1
         notif2text.Text = txt2
         notif2icon = icohn
+        notif2.Size = UDim2.new(0, 240, 0, 280)
+        notif2.Position = UDim2.new(0.5, 0, 0.5, 40)
         notif2.Visible = true
         notif2button1.Text = b1
         notif2button2.Text = b2
-        if callback and callback2 then
-            con1 = notif2button1.MouseButton1Click:Connect(function()
-                con1:Disconnect()
-                con2:Disconnect()
-                callback()
+
+        TweenService:Create(notif2, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 304, 0, 362),
+            Position = UDim2.new(0.5, 0, 0.5, 0)
+        }):Play()
+
+        con1 = notif2button1.MouseButton1Click:Connect(function()
+            if con1 then con1:Disconnect() end
+            if con2 then con2:Disconnect() end
+            if callback then callback() end
+            TweenService:Create(notif2, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 240, 0, 280),
+                Position = UDim2.new(0.5, 0, 0.5, 40)
+            }):Play()
+            task.delay(0.3, function()
                 notif2.Visible = false
             end)
-            con2 = notif2button2.MouseButton1Click:Connect(function()
-                con1:Disconnect()
-                con2:Disconnect()
-                callback2()
+        end)
+        con2 = notif2button2.MouseButton1Click:Connect(function()
+            if con1 then con1:Disconnect() end
+            if con2 then con2:Disconnect() end
+            if callback2 then callback2() end
+            TweenService:Create(notif2, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 240, 0, 280),
+                Position = UDim2.new(0.5, 0, 0.5, 40)
+            }):Play()
+            task.delay(0.3, function()
                 notif2.Visible = false
             end)
-        end
+        end)
     end
 
     function window:Divider(name)
@@ -2122,6 +2171,29 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 if rainbowConnection then rainbowConnection:Disconnect() end
             end
         end, "Settings_Rainbow")
+
+        setsec:Switch("Transparent Sidebar", true, function(v)
+            if v then
+                workarea.BackgroundTransparency = 0
+                workareacornerhider.BackgroundTransparency = 0
+            else
+                workarea.BackgroundTransparency = 1
+                workareacornerhider.BackgroundTransparency = 1
+            end
+        end, "Settings_TransparentSidebar")
+
+        setsec:Switch("Blur Background", true, function(v)
+            if v then
+                blur:BindFrame(main, {
+                    Transparency = 0.98,
+                    Color = Color3.fromRGB(255, 255, 255)
+                })
+            else
+                if blur:HasBinding(main) then
+                    blur:UnbindFrame(main)
+                end
+            end
+        end, "Settings_BlurBackground")
     end
     CreateSettingsTab()
 
