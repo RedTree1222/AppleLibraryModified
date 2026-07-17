@@ -1,4 +1,5 @@
 local lib = {}
+local blur = loadstring(game:HttpGet("https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/refs/heads/main/Blur.luau"))()
 lib.ButtonStyle = "Modern"
 lib.FolderName = "AppleLibraryModified"
 local sections = {}
@@ -249,7 +250,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     main.Position = UDim2.new(0.5, 0, 2, 0)
     main.Size = UDim2.new(0, 721, 0, 584)
     registerTheme(main, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(30, 30, 30))
+
     main.GroupTransparency = 0.150
+    blur:BindFrame(main, {
+        Transparency = 0.98,
+        Color = Color3.fromRGB(255, 255, 255)
+    })
 
     local uc = Instance.new("UICorner")
     uc.CornerRadius = UDim.new(0, 18)
