@@ -1,10 +1,12 @@
 local lib = {}
-lib.FolderName = lib.FolderName
+lib.ButtonStyle = "Modern"
+lib.FolderName = "AppleLibraryModified"
 local sections = {}
 local workareas = {}
 local notifs = {}
 local visible = true
 local dbcooper = false
+local scrollSyncConnected = false
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -844,17 +846,21 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
     end)
 
+    local lastX, lastY = 0, 0
     function window:ToggleVisible()
         if dbcooper then return end
         visible = not visible
         dbcooper = true
         updateCursor()
         if visible then
-            tp(main, UDim2.new(0.5, 0, 0.5, 0), 0.5)
+            targetX = lastX
+            targetY = lastY
             task.wait(0.5)
             dbcooper = false
         else
-            tp(main, main.Position + UDim2.new(0, 0, 2, 0), 0.5)
+            lastX = targetX
+            lastY = targetY
+            targetY = 2000
             task.wait(0.5)
             dbcooper = false
         end
@@ -1070,12 +1076,67 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 v.BackgroundTransparency = 1
                 v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
             end
-            sidebar2.BackgroundTransparency = 0
+            sidebar2.BackgroundTransparency = 1
             sidebar2.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+            local isNewHighlight = false
+            local highlight = main:FindFirstChild("TabHighlight")
+            if not highlight then
+                isNewHighlight = true
+                highlight = Instance.new("Frame")
+                highlight.Name = "TabHighlight"
+                highlight.Parent = main
+                highlight.BackgroundColor3 = currentAccentColor
+                highlight.Size = UDim2.new(0, 226, 0, 37)
+                highlight.ZIndex = 1
+                local uc = Instance.new("UICorner", highlight)
+                uc.CornerRadius = UDim.new(0, 9)
+                table.insert(themeElements, {
+                    Instance = highlight,
+                    Property = "BackgroundColor3",
+                    Light = currentAccentColor,
+                    Dark = currentAccentColor
+                })
+                if not scrollSyncConnected then
+                    scrollSyncConnected = true
+                    sidebar:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+                        local activeHighlight = main:FindFirstChild("TabHighlight")
+                        if activeHighlight then
+                            local activeTab = nil
+                            for _, s in ipairs(sections) do
+                                if s.BackgroundTransparency == 1 and s.TextColor3 == Color3.fromRGB(255, 255, 255) then
+                                    activeTab = s
+                                    break
+                                end
+                            end
+                            if activeTab then
+                                activeHighlight.Position = UDim2.new(0, activeTab.AbsolutePosition.X - main.AbsolutePosition.X, 0, activeTab.AbsolutePosition.Y - main.AbsolutePosition.Y)
+                            end
+                        end
+                    end)
+                end
+            end
+
+            local targetY = sidebar2.AbsolutePosition.Y - main.AbsolutePosition.Y
+            local targetX = sidebar2.AbsolutePosition.X - main.AbsolutePosition.X
+            if isNewHighlight then
+                highlight.Position = UDim2.new(0, targetX, 0, targetY)
+            else
+                TweenService:Create(highlight, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Position = UDim2.new(0, targetX, 0, targetY)
+                }):Play()
+            end
+
             for b, v in next, workareas do
-                v.Visible = false
+                if v ~= workareamain then
+                    v.Visible = false
+                end
             end
             workareamain.Visible = true
+            workareamain.Position = UDim2.new(0, 0, 0, 76)
+            TweenService:Create(workareamain, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 0, 0, 56)
+            }):Play()
         end
 
         function sec:Divider(name)
@@ -1101,33 +1162,49 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             button.Name = "button"
             button.Text = name
             button.Parent = workareamain
-            registerTheme(button, "BackgroundColor3", Color3.fromRGB(216, 216, 216), Color3.fromRGB(60, 60, 60))
-            button.BackgroundTransparency = 1
             button.Size = UDim2.new(1, 0, 0, 37)
             button.ZIndex = 2
-            button.Font = Enum.Font.Gotham
-            button.TextColor3 = currentAccentColor
-            button.TextSize = 21
-
+            button.Font = Enum.Font.GothamSemibold
+            button.TextSize = 16
+            
             local uc_3 = Instance.new("UICorner")
-            uc_3.CornerRadius = UDim.new(0, 9)
             uc_3.Parent = button
 
-            local us = Instance.new("UIStroke", button)
-            us.ApplyStrokeMode = "Border"
-            us.Color = currentAccentColor
-            us.Thickness = 1
-
-            if callback then
-                button.MouseButton1Click:Connect(function()
-                    coroutine.wrap(function()
-                        button.TextSize -= 3
-                        task.wait(0.06)
-                        button.TextSize += 3
-                    end)()
-                    callback()
-                end)
+            if lib.ButtonStyle == "Glossy" then
+                button.BackgroundColor3 = currentAccentColor
+                button.BackgroundTransparency = 0
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                uc_3.CornerRadius = UDim.new(0, 12)
+                
+                local grad2 = Instance.new("UIGradient", button)
+                grad2.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0.00, Color3.new(1, 1, 1)),
+                    ColorSequenceKeypoint.new(0.49, Color3.new(0.8, 0.8, 0.8)),
+                    ColorSequenceKeypoint.new(0.50, Color3.new(0.6, 0.6, 0.6)),
+                    ColorSequenceKeypoint.new(1.00, Color3.new(0.5, 0.5, 0.5))
+                })
+                grad2.Rotation = 90
+            else
+                button.BackgroundColor3 = currentAccentColor
+                button.BackgroundTransparency = 0
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                uc_3.CornerRadius = UDim.new(0, 6)
             end
+
+            local ogSize = UDim2.new(1, 0, 0, 37)
+            button.MouseButton1Down:Connect(function()
+                TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -6, 0, 35)}):Play()
+            end)
+            button.MouseButton1Up:Connect(function()
+                TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {Size = ogSize}):Play()
+            end)
+            button.MouseLeave:Connect(function()
+                TweenService:Create(button, TweenInfo.new(0.1), {Size = ogSize}):Play()
+            end)
+
+            button.MouseButton1Click:Connect(function()
+                if callback then callback() end
+            end)
         end
 
         function sec:Label(name)
