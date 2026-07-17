@@ -458,6 +458,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
         local neonFolder = workspace.CurrentCamera:FindFirstChild("Neon")
         if neonFolder then neonFolder:Destroy() end
+        customCursor.Visible = false
         RunService:UnbindFromRenderStep("AppleLibCursorSync")
         UserInputService.MouseIconEnabled = true
         if visibleKeyConn then visibleKeyConn:Disconnect() end
@@ -1260,6 +1261,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             }):Play()
         end
 
+        function sec:GetContainer()
+            return workareamain
+        end
+
         function sec:Divider(name)
             local section = Instance.new("TextLabel")
             section.Name = "section"
@@ -1963,15 +1968,16 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end)
 
             UserInputService.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    local mpos = UserInputService:GetMouseLocation()
-                    local dbPos = dropbtn.AbsolutePosition
-                    local dbSize = dropbtn.AbsoluteSize
-                    local inBtn = mpos.X >= dbPos.X and mpos.X <= dbPos.X + dbSize.X and mpos.Y >= dbPos.Y and mpos.Y <= dbPos.Y + dbSize.Y
+                if input.UserInputType == Enum.UserInputType.MouseButton1 and opened then
+                    local absPos = dropbtn.AbsolutePosition
+                    local absSize = dropbtn.AbsoluteSize
+                    local mpos = Vector2.new(input.Position.X, input.Position.Y)
+                    local inBtn = mpos.X >= absPos.X and mpos.X <= absPos.X + absSize.X and mpos.Y >= absPos.Y and mpos.Y <= absPos.Y + absSize.Y
                     
                     local lPos = listframe.AbsolutePosition
                     local lSize = listframe.AbsoluteSize
                     local inList = mpos.X >= lPos.X and mpos.X <= lPos.X + lSize.X and mpos.Y >= lPos.Y and mpos.Y <= lPos.Y + lSize.Y
+                    
                     if not inBtn and not inList then
                         closeList()
                     end
@@ -2480,7 +2486,75 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
         end, "Settings_BlurBackground")
     end
+    
+    local function CreateCreditsTab()
+        local credSec = window:Section("⭐ Credits")
+        credSec:Divider("Modified AppleLibrary")
+        
+        local container = credSec:GetContainer()
+        
+        local redTree = Instance.new("TextLabel")
+        redTree.Parent = container
+        redTree.Size = UDim2.new(1, 0, 0, 60)
+        redTree.BackgroundTransparency = 1
+        redTree.Font = Enum.Font.GothamBold
+        redTree.Text = "RedTree1222"
+        redTree.TextSize = 28
+        redTree.TextColor3 = Color3.fromRGB(255, 255, 255)
+        
+        local grad1 = Instance.new("UIGradient", redTree)
+        grad1.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 0, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 200, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 150))
+        })
+        
+        local stroke = Instance.new("UIStroke", redTree)
+        stroke.Thickness = 2
+        stroke.Color = Color3.fromRGB(255, 255, 255)
+        stroke.Transparency = 0.5
+        
+        local gradStroke = Instance.new("UIGradient", stroke)
+        gradStroke.Color = grad1.Color
+        
+        task.spawn(function()
+            local rot = 0
+            while task.wait() do
+                if not redTree.Parent then break end
+                rot = rot + 2
+                grad1.Rotation = rot
+                gradStroke.Rotation = rot
+            end
+        end)
+        
+        credSec:Divider("Contributors")
+        
+        local hamza = Instance.new("TextLabel")
+        hamza.Parent = container
+        hamza.Size = UDim2.new(1, 0, 0, 40)
+        hamza.BackgroundTransparency = 1
+        hamza.Font = Enum.Font.GothamMedium
+        hamza.Text = "@mham-z (Hamza)"
+        hamza.TextSize = 18
+        hamza.TextColor3 = Color3.fromRGB(200, 200, 210)
+        
+        local grad2 = Instance.new("UIGradient", hamza)
+        grad2.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 120)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 160, 180))
+        })
+        task.spawn(function()
+            local r = 0
+            while task.wait() do
+                if not hamza.Parent then break end
+                r = r + 0.5
+                grad2.Rotation = r
+            end
+        end)
+    end
+    
     CreateSettingsTab()
+    CreateCreditsTab()
 
 
     local autoloadConfig = ConfigManager:GetAutoLoad()
