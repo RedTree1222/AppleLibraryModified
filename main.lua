@@ -53,6 +53,7 @@ local ConfigManager = {
     CurrentTheme = "light"
 }
 
+-- save cfg
 function ConfigManager:Save(name)
     local data = {}
     for flag, element in pairs(self.Elements) do
@@ -65,6 +66,7 @@ function ConfigManager:Save(name)
     writefile(lib.FolderName .. "/Configs/" .. name .. ".json", HttpService:JSONEncode(data))
 end
 
+-- load cfg
 function ConfigManager:Load(name)
     local path = lib.FolderName .. "/Configs/" .. name .. ".json"
     if isfile and not isfile(path) then return end
@@ -150,6 +152,7 @@ local function registerTheme(instance, propertyName, lightValue, darkValue)
     instance[propertyName] = (currentTheme == "light") and lightValue or darkValue
 end
 
+-- build main ui
 function lib:init(ti, dosplash, visiblekey, deleteprevious)
     ConfigManager:LoadTheme()
     currentTheme = ConfigManager.CurrentTheme
@@ -891,6 +894,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end)
 
     local lastX, lastY = 0, 0
+    -- toggle ui visibility
     function window:ToggleVisible()
         if dbcooper then return end
         visible = not visible
@@ -945,6 +949,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local notifBaseY = 0.0794737339
     local notifSpacing = 130
 
+    -- temp notif
     function window:TempNotify(text1, text2, icon)
         local function refreshPositions()
             for i, data in ipairs(activeNotifs) do
@@ -1048,6 +1053,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end
 
 
+    -- standard notif
     function window:Notify(txt1, txt2, b1, icohn, callback)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
         notiftitle.Text = txt1
@@ -1078,6 +1084,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end)
     end
 
+    -- two btn notif
     function window:Notify2(txt1, txt2, b1, b2, icohn, callback, callback2)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
         notif2title.Text = txt1
@@ -1141,6 +1148,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sidebardivider.TextYAlignment = Enum.TextYAlignment.Bottom
     end
 
+    -- new section
     function window:Section(name)
         local sidebar2 = Instance.new("TextButton")
         sidebar2.Name = "sidebar2"
@@ -1266,6 +1274,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             return workareamain
         end
 
+        -- div
         function sec:Divider(name)
             local section = Instance.new("TextLabel")
             section.Name = "section"
@@ -1284,6 +1293,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             section.TextYAlignment = Enum.TextYAlignment.Bottom
         end
 
+        -- btn
         function sec:Button(name, callback)
             local button = Instance.new("TextButton")
             button.Name = "button"
@@ -1349,6 +1359,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             label.Text = name
         end
 
+        -- switch
         function sec:Switch(name, defaultmode, callback, flag)
             flag = flag or name
             local mode = defaultmode
@@ -1429,6 +1440,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             ConfigManager.Elements[flag] = { Value = mode, Set = function(self, val) if mode ~= val then toggle() end end }
         end
 
+        -- text box
         function sec:TextField(name, placeholder, callback, flag)
             flag = flag or name
             local textfield = Instance.new("TextLabel")
@@ -1483,6 +1495,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
         end
 
+        -- slider
         function sec:Slider(name, min, max, default, callback, flag)
             flag = flag or name
             local sliderrow = Instance.new("TextLabel")
@@ -1606,6 +1619,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             ConfigManager.Elements[flag] = { Value = currentValue, Set = function(self, val) setValue(val) end }
         end
 
+        -- drop list
         function sec:Dropdown(name, options, default, callback, flag)
             flag = flag or name
             local droprow = Instance.new("TextLabel")
@@ -1778,6 +1792,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             return DropdownObj
         end
 
+        -- multi drop list
         function sec:MultiDropdown(name, options, defaultOptions, callback, flag)
             flag = flag or name
             defaultOptions = defaultOptions or {}
@@ -1987,6 +2002,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             return DropdownObj
         end
 
+        -- clr picker
         function sec:ColorPicker(name, default, callback, flag)
             flag = flag or name
             local cprow = Instance.new("TextLabel")
@@ -2223,6 +2239,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end)
         end
 
+        -- keybind
         function sec:Keybind(name, default, callback, flag)
             flag = flag or name
             local kbrow = Instance.new("TextLabel")
@@ -2297,6 +2314,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             table.insert(cleanupKeybinds, kbConn)
         end
 
+        -- text block
         function sec:Paragraph(title, content)
             local para = Instance.new("TextLabel")
             para.Name = "para"
@@ -2345,6 +2363,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end
 
     
+    -- settings
     local function CreateSettingsTab()
         local setsec = window:Section("⚙️ Settings")
         setsec:Divider("Config Manager")
@@ -2488,43 +2507,58 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end, "Settings_BlurBackground")
     end
     
+    -- credits
     local function CreateCreditsTab()
         local credSec = window:Section("⭐ Credits")
         credSec:Divider("Modified AppleLibrary")
         
         local container = credSec:GetContainer()
         
+        local redTreeContainer = Instance.new("Frame")
+        redTreeContainer.Parent = container
+        redTreeContainer.Size = UDim2.new(1, 0, 0, 60)
+        redTreeContainer.BackgroundTransparency = 1
+
         local redTree = Instance.new("TextLabel")
-        redTree.Parent = container
-        redTree.Size = UDim2.new(1, 0, 0, 60)
+        redTree.Parent = redTreeContainer
+        redTree.Size = UDim2.new(1, 0, 1, 0)
         redTree.BackgroundTransparency = 1
         redTree.Font = Enum.Font.GothamBold
         redTree.Text = "RedTree1222"
         redTree.TextSize = 28
         redTree.TextColor3 = Color3.fromRGB(255, 255, 255)
+        redTree.ZIndex = 2
         
         local grad1 = Instance.new("UIGradient", redTree)
         grad1.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 0, 255)),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 200, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 150))
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 50, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255))
         })
         
-        local stroke = Instance.new("UIStroke", redTree)
-        stroke.Thickness = 2
-        stroke.Color = Color3.fromRGB(255, 255, 255)
-        stroke.Transparency = 0.5
+        local glow = redTree:Clone()
+        glow.Name = "Glow"
+        glow.Parent = redTreeContainer
+        glow.ZIndex = 1
+        glow.TextTransparency = 0.3
         
-        local gradStroke = Instance.new("UIGradient", stroke)
-        gradStroke.Color = grad1.Color
+        local glowStroke = Instance.new("UIStroke", glow)
+        glowStroke.Thickness = 4
+        glowStroke.Color = Color3.fromRGB(255, 255, 255)
+        glowStroke.Transparency = 0.6
+        
+        local gradGlow = Instance.new("UIGradient", glowStroke)
+        gradGlow.Color = grad1.Color
+        
+        local gradGlowText = glow:FindFirstChild("UIGradient")
         
         task.spawn(function()
             local rot = 0
             while task.wait() do
                 if not redTree.Parent then break end
-                rot = rot + 2
+                rot = rot + 0.3
                 grad1.Rotation = rot
-                gradStroke.Rotation = rot
+                gradGlow.Rotation = rot
+                if gradGlowText then gradGlowText.Rotation = rot end
             end
         end)
         
