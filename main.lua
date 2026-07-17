@@ -2527,7 +2527,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
         end)
         
-        credSec:Divider("Contributors")
+        credSec:Divider("Original Creator")
         
         local hamza = Instance.new("TextLabel")
         hamza.Parent = container
