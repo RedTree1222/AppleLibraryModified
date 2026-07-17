@@ -1,6 +1,11 @@
 --blur made by bocaj111004
+local effect = Instance.new("DepthOfFieldEffect", game:GetService("Lighting"))
+effect.FarIntensity = 0
+effect.FocusDistance = 51.6
+effect.InFocusRadius = 50
+effect.NearIntensity = 1
+effect.Enabled = true
 local Module = {}
-
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 
