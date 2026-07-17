@@ -34,6 +34,10 @@ sectionA:Dropdown("Dropdown", {"One", "Two", "Three"}, "One", function(v)
     print(v)
 end)
 
+sectionA:MultiDropdown("MultiDropdown", {"Apple", "Banana", "Cherry", "Date", "Elderberry"}, {"Apple", "Cherry"}, function(selectedOptions)
+    print("Selected:", table.concat(selectedOptions, ", "))
+end)
+
 sectionA:ColorPicker("Color", Color3.fromRGB(21, 103, 251), function(c)
     print(c)
 end)

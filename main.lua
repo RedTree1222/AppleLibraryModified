@@ -253,16 +253,16 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.Position = UDim2.new(0.5, 0, 2, 0)
     main.Size = UDim2.new(0, 721, 0, 584)
-    registerTheme(main, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(30, 30, 30))
+    registerTheme(main, "BackgroundColor3", Color3.fromRGB(245, 245, 250), Color3.fromRGB(18, 18, 24))
 
-    main.GroupTransparency = 0.150
+    main.GroupTransparency = 0.08
     blur:BindFrame(main, {
         Transparency = 0.98,
         Color = Color3.fromRGB(255, 255, 255)
     })
 
     local uc = Instance.new("UICorner")
-    uc.CornerRadius = UDim.new(0, 18)
+    uc.CornerRadius = UDim.new(0, 14)
     uc.Parent = main
 
     local topbar = Instance.new("TextButton")
@@ -326,30 +326,32 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local workarea = Instance.new("Frame")
     workarea.Name = "workarea"
     workarea.Parent = main
-    registerTheme(workarea, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(30, 30, 30))
+    registerTheme(workarea, "BackgroundColor3", Color3.fromRGB(238, 238, 245), Color3.fromRGB(24, 24, 32))
     workarea.Position = UDim2.new(0, 263, 0, 0)
     workarea.Size = UDim2.new(1, -263, 1, 0)
+    workarea.BackgroundTransparency = 1
 
     local uc_2 = Instance.new("UICorner")
-    uc_2.CornerRadius = UDim.new(0, 18)
+    uc_2.CornerRadius = UDim.new(0, 14)
     uc_2.Parent = workarea
 
     local workareacornerhider = Instance.new("Frame")
     workareacornerhider.Name = "workareacornerhider"
     workareacornerhider.Parent = workarea
-    registerTheme(workareacornerhider, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(30, 30, 30))
+    registerTheme(workareacornerhider, "BackgroundColor3", Color3.fromRGB(238, 238, 245), Color3.fromRGB(24, 24, 32))
     workareacornerhider.BorderSizePixel = 0
     workareacornerhider.Size = UDim2.new(0, 18, 1, 0)
+    workareacornerhider.BackgroundTransparency = 1
 
     local search = Instance.new("Frame")
     search.Name = "search"
     search.Parent = main
-    registerTheme(search, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(45, 45, 45))
+    registerTheme(search, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
     search.Position = UDim2.new(0, 18, 0, 56)
     search.Size = UDim2.new(0, 225, 0, 34)
 
     local uc_8 = Instance.new("UICorner")
-    uc_8.CornerRadius = UDim.new(0, 9)
+    uc_8.CornerRadius = UDim.new(0, 10)
     uc_8.Parent = search
 
     local searchicon = Instance.new("ImageButton")
@@ -372,12 +374,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     searchtextbox.ClipsDescendants = true
     searchtextbox.Position = UDim2.new(0.180257514, 0, -0.0162218884, 0)
     searchtextbox.Size = UDim2.new(0, 176, 0, 34)
-    searchtextbox.Font = Enum.Font.Gotham
+    searchtextbox.Font = Enum.Font.GothamMedium
     searchtextbox.LineHeight = 0.870
     searchtextbox.PlaceholderText = "Search"
     searchtextbox.Text = ""
-    registerTheme(searchtextbox, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-    searchtextbox.TextSize = 22
+    registerTheme(searchtextbox, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+    searchtextbox.TextSize = 15
     searchtextbox.TextXAlignment = Enum.TextXAlignment.Left
 
     searchicon.MouseButton1Click:Connect(function()
@@ -388,7 +390,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     sidebar.Name = "sidebar"
     sidebar.Parent = main
     sidebar.Active = true
-    registerTheme(sidebar, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(30, 30, 30))
+    registerTheme(sidebar, "BackgroundColor3", Color3.fromRGB(245, 245, 250), Color3.fromRGB(18, 18, 24))
     sidebar.BackgroundTransparency = 1
     sidebar.BorderSizePixel = 0
     sidebar.Position = UDim2.new(0, 18, 0, 106)
@@ -400,7 +402,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local ull_2 = Instance.new("UIListLayout")
     ull_2.Parent = sidebar
     ull_2.SortOrder = Enum.SortOrder.LayoutOrder
-    ull_2.Padding = UDim.new(0, 5)
+    ull_2.Padding = UDim.new(0, 3)
 
     RunService:BindToRenderStep("search", 1, function()
         if not searchtextbox:IsFocused() then
@@ -451,6 +453,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if blur:HasBinding(main) then
             blur:UnbindFrame(main)
         end
+        for _, v in pairs(game:GetService("Lighting"):GetChildren()) do
+            if v:IsA("DepthOfFieldEffect") then v:Destroy() end
+        end
+        local neonFolder = workspace.CurrentCamera:FindFirstChild("Neon")
+        if neonFolder then neonFolder:Destroy() end
         RunService:UnbindFromRenderStep("AppleLibCursorSync")
         UserInputService.MouseIconEnabled = true
         if visibleKeyConn then visibleKeyConn:Disconnect() end
@@ -507,10 +514,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     title.BorderSizePixel = 2
     title.Position = UDim2.new(0, 281, 0, 20)
     title.Size = UDim2.new(1, -340, 0, 30)
-    title.Font = Enum.Font.Gotham
+    title.Font = Enum.Font.GothamBold
     title.LineHeight = 1.180
-    registerTheme(title, "TextColor3", Color3.fromRGB(0, 0, 0), Color3.fromRGB(255, 255, 255))
-    title.TextSize = 28
+    registerTheme(title, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
+    title.TextSize = 22
     title.TextWrapped = true
     title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -873,6 +880,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if customCursor.Visible then
             local pos = UserInputService:GetMouseLocation()
             customCursor.Position = UDim2.new(0, pos.X, 0, pos.Y)
+            UserInputService.MouseIconEnabled = false
         end
         if not scrgui.Parent then
             UserInputService.MouseIconEnabled = true
@@ -1121,11 +1129,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sidebardivider.BackgroundTransparency = 1
         sidebardivider.BorderSizePixel = 2
         sidebardivider.Position = UDim2.new(0, 0, 0.00215982716, 0)
-        sidebardivider.Size = UDim2.new(0, 226, 0, 26)
-        sidebardivider.Font = Enum.Font.Gotham
+        sidebardivider.Size = UDim2.new(0, 226, 0, 28)
+        sidebardivider.Font = Enum.Font.GothamBold
         sidebardivider.Text = name
-        registerTheme(sidebardivider, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(180, 180, 180))
-        sidebardivider.TextSize = 21
+        registerTheme(sidebardivider, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(100, 100, 120))
+        sidebardivider.TextSize = 11
         sidebardivider.TextWrapped = true
         sidebardivider.TextXAlignment = Enum.TextXAlignment.Left
         sidebardivider.TextYAlignment = Enum.TextYAlignment.Bottom
@@ -1137,13 +1145,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sidebar2.Parent = sidebar
         sidebar2.BackgroundColor3 = currentAccentColor
         sidebar2.BackgroundTransparency = 1
-        sidebar2.Size = UDim2.new(0, 226, 0, 37)
+        sidebar2.Size = UDim2.new(0, 226, 0, 34)
         sidebar2.ZIndex = 2
         sidebar2.AutoButtonColor = false
-        sidebar2.Font = Enum.Font.Gotham
+        sidebar2.Font = Enum.Font.GothamMedium
         sidebar2.Text = name
         sidebar2.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
-        sidebar2.TextSize = 21
+        sidebar2.TextSize = 15
 
         local uc_10 = Instance.new("UICorner")
         uc_10.CornerRadius = UDim.new(0, 9)
@@ -1260,11 +1268,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             section.BackgroundTransparency = 1
             section.BorderSizePixel = 2
             section.Size = UDim2.new(1, 0, 0, 50)
-            section.Font = Enum.Font.Gotham
+            section.Font = Enum.Font.GothamBold
             section.LineHeight = 1.180
             section.Text = name
-            registerTheme(section, "TextColor3", Color3.fromRGB(0, 0, 0), Color3.fromRGB(255, 255, 255))
-            section.TextSize = 25
+            registerTheme(section, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(100, 100, 120))
+            section.TextSize = 13
             section.TextWrapped = true
             section.TextXAlignment = Enum.TextXAlignment.Left
             section.TextYAlignment = Enum.TextYAlignment.Bottom
@@ -1277,8 +1285,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             button.Parent = workareamain
             button.Size = UDim2.new(1, 0, 0, 37)
             button.ZIndex = 2
-            button.Font = Enum.Font.GothamSemibold
-            button.TextSize = 16
+            button.Font = Enum.Font.GothamBold
+            button.TextSize = 14
             
             local uc_3 = Instance.new("UICorner")
             uc_3.Parent = button
@@ -1301,7 +1309,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 button.BackgroundColor3 = currentAccentColor
                 button.BackgroundTransparency = 0
                 button.TextColor3 = Color3.fromRGB(255, 255, 255)
-                uc_3.CornerRadius = UDim.new(0, 6)
+                uc_3.CornerRadius = UDim.new(0, 8)
             end
 
             local ogSize = UDim2.new(1, 0, 0, 37)
@@ -1328,9 +1336,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             label.BackgroundTransparency = 1
             label.BorderSizePixel = 2
             label.Size = UDim2.new(1, 0, 0, 37)
-            label.Font = Enum.Font.Gotham
-            registerTheme(label, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            label.TextSize = 21
+            label.Font = Enum.Font.GothamMedium
+            registerTheme(label, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(100, 100, 120))
+            label.TextSize = 16
             label.TextWrapped = true
             label.Text = name
         end
@@ -1346,17 +1354,17 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             toggleswitch.BackgroundTransparency = 1
             toggleswitch.BorderSizePixel = 2
             toggleswitch.Size = UDim2.new(1, 0, 0, 37)
-            toggleswitch.Font = Enum.Font.Gotham
+            toggleswitch.Font = Enum.Font.GothamMedium
             toggleswitch.Text = name
-            registerTheme(toggleswitch, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            toggleswitch.TextSize = 21
+            registerTheme(toggleswitch, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            toggleswitch.TextSize = 16
             toggleswitch.TextWrapped = true
             toggleswitch.TextXAlignment = Enum.TextXAlignment.Left
 
             local Frame = Instance.new("TextButton")
             Frame.Parent = toggleswitch
-            Frame.Position = UDim2.new(1, -70, 0.5, -18)
-            Frame.Size = UDim2.new(0, 70, 0, 36)
+            Frame.Position = UDim2.new(1, -56, 0.5, -14)
+            Frame.Size = UDim2.new(0, 56, 0, 28)
             Frame.Text = ""
             Frame.AutoButtonColor = false
 
@@ -1367,7 +1375,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local TextButton = Instance.new("TextButton")
             TextButton.Parent = Frame
             TextButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            TextButton.Size = UDim2.new(0, 34, 0, 34)
+            TextButton.Size = UDim2.new(0, 26, 0, 26)
             TextButton.AutoButtonColor = false
             TextButton.Text = ""
 
@@ -1380,7 +1388,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     TextButton.Position = UDim2.new(0, 1, 0, 1)
                     Frame.BackgroundColor3 = (currentTheme == "light") and Color3.fromRGB(216, 216, 216) or Color3.fromRGB(60, 60, 60)
                 else
-                    TextButton.Position = UDim2.new(0, 35, 0, 1)
+                    TextButton.Position = UDim2.new(0, 29, 0, 1)
                     Frame.BackgroundColor3 = currentAccentColor
                 end
             end
@@ -1392,7 +1400,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = mode end
                 if callback then callback(mode) end
                 if mode then
-                    TextButton:TweenPosition(UDim2.new(0, 35, 0, 1), "In", "Sine", 0.1, true)
+                    TextButton:TweenPosition(UDim2.new(0, 29, 0, 1), "In", "Sine", 0.1, true)
                     Frame.BackgroundColor3 = currentAccentColor
                 else
                     TextButton:TweenPosition(UDim2.new(0, 1, 0, 1), "In", "Sine", 0.1, true)
@@ -1424,21 +1432,21 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             textfield.BackgroundTransparency = 1
             textfield.BorderSizePixel = 2
             textfield.Size = UDim2.new(1, 0, 0, 37)
-            textfield.Font = Enum.Font.Gotham
+            textfield.Font = Enum.Font.GothamMedium
             textfield.Text = name
-            registerTheme(textfield, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            textfield.TextSize = 21
+            registerTheme(textfield, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            textfield.TextSize = 16
             textfield.TextWrapped = true
             textfield.TextXAlignment = Enum.TextXAlignment.Left
 
             local Frame_2 = Instance.new("Frame")
             Frame_2.Parent = textfield
-            registerTheme(Frame_2, "BackgroundColor3", Color3.fromRGB(240, 240, 240), Color3.fromRGB(45, 45, 45))
+            registerTheme(Frame_2, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
             Frame_2.Position = UDim2.new(1, -233, 0.5, -17)
             Frame_2.Size = UDim2.new(0, 233, 0, 34)
 
             local uc_6 = Instance.new("UICorner")
-            uc_6.CornerRadius = UDim.new(0, 9)
+            uc_6.CornerRadius = UDim.new(0, 8)
             uc_6.Parent = Frame_2
 
             local TextBox = Instance.new("TextBox")
@@ -1451,13 +1459,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             TextBox.Position = UDim2.new(0.0643776804, 0, 0, -2)
             TextBox.Size = UDim2.new(0, 203, 0, 34)
             TextBox.ClearTextOnFocus = false
-            TextBox.Font = Enum.Font.Gotham
+            TextBox.Font = Enum.Font.GothamMedium
             TextBox.LineHeight = 0.870
-            TextBox.PlaceholderColor3 = Color3.fromRGB(113, 113, 113)
+            TextBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 120)
             TextBox.PlaceholderText = placeholder or "Type..."
             TextBox.Text = ""
-            registerTheme(TextBox, "TextColor3", Color3.fromRGB(12, 12, 12), Color3.fromRGB(240, 240, 240))
-            TextBox.TextSize = 21
+            registerTheme(TextBox, "TextColor3", Color3.fromRGB(160, 160, 180), Color3.fromRGB(140, 140, 155))
+            TextBox.TextSize = 15
             TextBox.TextXAlignment = Enum.TextXAlignment.Left
 
             ConfigManager.Elements[flag] = { Value = TextBox.Text, Set = function(self, val) TextBox.Text = val; if callback then callback(val) end end }
@@ -1478,10 +1486,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             sliderrow.BackgroundTransparency = 1
             sliderrow.BorderSizePixel = 0
             sliderrow.Size = UDim2.new(1, 0, 0, 37)
-            sliderrow.Font = Enum.Font.Gotham
+            sliderrow.Font = Enum.Font.GothamMedium
             sliderrow.Text = name
-            registerTheme(sliderrow, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            sliderrow.TextSize = 21
+            registerTheme(sliderrow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            sliderrow.TextSize = 16
             sliderrow.TextWrapped = true
             sliderrow.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1500,9 +1508,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local rail = Instance.new("Frame")
             rail.Name = "rail"
             rail.Parent = sliderrow
-            registerTheme(rail, "BackgroundColor3", Color3.fromRGB(216, 216, 216), Color3.fromRGB(60, 60, 60))
+            registerTheme(rail, "BackgroundColor3", Color3.fromRGB(200, 200, 215), Color3.fromRGB(45, 45, 58))
             rail.Position = UDim2.new(1, -240, 0.5, -3)
-            rail.Size = UDim2.new(0, 180, 0, 6)
+            rail.Size = UDim2.new(0, 180, 0, 4)
             rail.BorderSizePixel = 0
 
             local uc_r = Instance.new("UICorner")
@@ -1601,25 +1609,31 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             droprow.BackgroundTransparency = 1
             droprow.BorderSizePixel = 0
             droprow.Size = UDim2.new(1, 0, 0, 37)
-            droprow.Font = Enum.Font.Gotham
+            droprow.Font = Enum.Font.GothamMedium
             droprow.Text = name
-            registerTheme(droprow, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            droprow.TextSize = 21
+            registerTheme(droprow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            droprow.TextSize = 16
             droprow.TextWrapped = true
             droprow.TextXAlignment = Enum.TextXAlignment.Left
 
             local dropbtn = Instance.new("TextButton")
             dropbtn.Name = "dropbtn"
             dropbtn.Parent = droprow
-            registerTheme(dropbtn, "BackgroundColor3", Color3.fromRGB(240, 240, 240), Color3.fromRGB(45, 45, 45))
+            registerTheme(dropbtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
             dropbtn.Position = UDim2.new(1, -233, 0.5, -17)
             dropbtn.Size = UDim2.new(0, 233, 0, 34)
             dropbtn.Font = Enum.Font.Gotham
-            registerTheme(dropbtn, "TextColor3", Color3.fromRGB(12, 12, 12), Color3.fromRGB(240, 240, 240))
-            dropbtn.TextSize = 18
+            local droplabel = Instance.new("TextLabel", dropbtn)
+            droplabel.BackgroundTransparency = 1
+            droplabel.Size = UDim2.new(1, -20, 1, 0)
+            droplabel.Position = UDim2.new(0, 10, 0, 0)
+            droplabel.Font = Enum.Font.Gotham
+            registerTheme(droplabel, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
+            droplabel.TextSize = 14
+            droplabel.TextXAlignment = Enum.TextXAlignment.Left
             dropbtn.AutoButtonColor = false
-            dropbtn.TextXAlignment = Enum.TextXAlignment.Left
-            dropbtn.Text = "  " .. (default or (options[1] or ""))
+            dropbtn.Text = ""
+            droplabel.Text = (default or (options[1] or ""))
             dropbtn.ClipsDescendants = true
 
             local uc_db = Instance.new("UICorner")
@@ -1639,15 +1653,19 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
             local currentValue = default or (options[1] or "")
 
-            local listframe = Instance.new("Frame")
+            local listframe = Instance.new("ScrollingFrame")
             listframe.Name = "listframe"
             listframe.Parent = workareamain
-            registerTheme(listframe, "BackgroundColor3", Color3.fromRGB(245, 245, 245), Color3.fromRGB(40, 40, 40))
+            registerTheme(listframe, "BackgroundColor3", Color3.fromRGB(238, 238, 245), Color3.fromRGB(24, 24, 32))
             listframe.BorderSizePixel = 0
             listframe.Size = UDim2.new(1, 0, 0, 0)
             listframe.ClipsDescendants = true
             listframe.Visible = false
             listframe.ZIndex = 5
+            listframe.CanvasSize = UDim2.new(0, 0, 0, 0)
+            listframe.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            listframe.ScrollBarThickness = 2
+            listframe.ScrollBarImageColor3 = currentAccentColor
 
             local uc_lf = Instance.new("UICorner")
             uc_lf.CornerRadius = UDim.new(0, 9)
@@ -1698,10 +1716,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     optbtn.BackgroundTransparency = 1
                     optbtn.Size = UDim2.new(1, -8, 0, 30)
                     optbtn.Position = UDim2.new(0, 4, 0, 0)
-                    optbtn.Font = Enum.Font.Gotham
+                    optbtn.Font = Enum.Font.GothamMedium
                     optbtn.Text = opt
-                    registerTheme(optbtn, "TextColor3", Color3.fromRGB(12, 12, 12), Color3.fromRGB(240, 240, 240))
-                    optbtn.TextSize = 18
+                    registerTheme(optbtn, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
+                    optbtn.TextSize = 14
                     optbtn.AutoButtonColor = false
                     optbtn.ZIndex = 6
 
@@ -1719,7 +1737,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     optbtn.MouseButton1Click:Connect(function()
                         currentValue = opt
                         if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
-                        dropbtn.Text = "  " .. opt
+                        droplabel.Text = opt
                         closeList()
                         if callback then callback(currentValue) end
                     end)
@@ -1727,7 +1745,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
             DropdownObj:Refresh(options)
             
-            ConfigManager.Elements[flag] = { Value = currentValue, Set = function(self, val) currentValue = val; dropbtn.Text = "  " .. val; if callback then callback(val) end end }
+            ConfigManager.Elements[flag] = { Value = currentValue, Set = function(self, val) currentValue = val; droplabel.Text = val; if callback then callback(val) end end }
 
             dropbtn.MouseButton1Click:Connect(function()
                 if opened then
@@ -1754,6 +1772,214 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             return DropdownObj
         end
 
+        function sec:MultiDropdown(name, options, defaultOptions, callback, flag)
+            flag = flag or name
+            defaultOptions = defaultOptions or {}
+            local droprow = Instance.new("TextLabel")
+            droprow.Name = "droprow"
+            droprow.Parent = workareamain
+            droprow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            droprow.BackgroundTransparency = 1
+            droprow.BorderSizePixel = 0
+            droprow.Size = UDim2.new(1, 0, 0, 37)
+            droprow.Font = Enum.Font.GothamMedium
+            droprow.Text = name
+            registerTheme(droprow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            droprow.TextSize = 16
+            droprow.TextWrapped = true
+            droprow.TextXAlignment = Enum.TextXAlignment.Left
+
+            local dropbtn = Instance.new("TextButton")
+            dropbtn.Name = "dropbtn"
+            dropbtn.Parent = droprow
+            registerTheme(dropbtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
+            dropbtn.Position = UDim2.new(1, -233, 0.5, -17)
+            dropbtn.Size = UDim2.new(0, 233, 0, 34)
+            dropbtn.Font = Enum.Font.Gotham
+            local droplabel = Instance.new("TextLabel", dropbtn)
+            droplabel.BackgroundTransparency = 1
+            droplabel.Size = UDim2.new(1, -20, 1, 0)
+            droplabel.Position = UDim2.new(0, 10, 0, 0)
+            droplabel.Font = Enum.Font.Gotham
+            registerTheme(droplabel, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
+            droplabel.TextSize = 14
+            droplabel.TextXAlignment = Enum.TextXAlignment.Left
+            dropbtn.AutoButtonColor = false
+            dropbtn.Text = ""
+            dropbtn.ClipsDescendants = true
+
+            local uc_db = Instance.new("UICorner")
+            uc_db.CornerRadius = UDim.new(0, 9)
+            uc_db.Parent = dropbtn
+
+            local arrow = Instance.new("TextLabel")
+            arrow.Name = "arrow"
+            arrow.Parent = dropbtn
+            arrow.BackgroundTransparency = 1
+            arrow.Position = UDim2.new(1, -28, 0, 0)
+            arrow.Size = UDim2.new(0, 24, 1, 0)
+            arrow.Font = Enum.Font.GothamMedium
+            arrow.Text = "v"
+            arrow.TextColor3 = Color3.fromRGB(95, 95, 95)
+            arrow.TextSize = 14
+
+            local currentValues = {}
+            for _, v in ipairs(defaultOptions) do table.insert(currentValues, v) end
+
+            local function updateLabel()
+                if #currentValues == 0 then
+                    droplabel.Text = "None"
+                else
+                    droplabel.Text = table.concat(currentValues, ", ")
+                end
+            end
+            updateLabel()
+
+            local listframe = Instance.new("ScrollingFrame")
+            listframe.Name = "listframe"
+            listframe.Parent = workareamain
+            registerTheme(listframe, "BackgroundColor3", Color3.fromRGB(238, 238, 245), Color3.fromRGB(24, 24, 32))
+            listframe.BorderSizePixel = 0
+            listframe.Size = UDim2.new(1, 0, 0, 0)
+            listframe.ClipsDescendants = true
+            listframe.Visible = false
+            listframe.ZIndex = 5
+            listframe.CanvasSize = UDim2.new(0, 0, 0, 0)
+            listframe.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            listframe.ScrollBarThickness = 2
+            listframe.ScrollBarImageColor3 = currentAccentColor
+
+            local uc_lf = Instance.new("UICorner")
+            uc_lf.CornerRadius = UDim.new(0, 9)
+            uc_lf.Parent = listframe
+
+            local listlayout = Instance.new("UIListLayout")
+            listlayout.Parent = listframe
+            listlayout.SortOrder = Enum.SortOrder.LayoutOrder
+            listlayout.Padding = UDim.new(0, 2)
+
+            local listpadding = Instance.new("UIPadding")
+            listpadding.Parent = listframe
+            listpadding.PaddingTop = UDim.new(0, 4)
+            listpadding.PaddingBottom = UDim.new(0, 4)
+
+            local opened = false
+
+            local function closeList()
+                opened = false
+                arrow.Text = "v"
+                TweenService:Create(listframe, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                task.wait(0.15)
+                listframe.Visible = false
+            end
+
+            local function openList()
+                opened = true
+                arrow.Text = "^"
+                local contentH = listlayout.AbsoluteContentSize.Y + 8
+                local clampedH = math.min(contentH, 150)
+                listframe.Visible = true
+                listframe.Size = UDim2.new(1, 0, 0, 0)
+                TweenService:Create(listframe, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, clampedH)}):Play()
+            end
+
+            local function isSelected(opt)
+                for _, v in ipairs(currentValues) do
+                    if v == opt then return true end
+                end
+                return false
+            end
+
+            local DropdownObj = {}
+            function DropdownObj:Refresh(newOptions)
+                for _, child in ipairs(listframe:GetChildren()) do
+                    if child:IsA("TextButton") then child:Destroy() end
+                end
+                options = newOptions
+                for _, opt in ipairs(options) do
+                    local optbtn = Instance.new("TextButton")
+                    optbtn.Name = "optbtn"
+                    optbtn.Parent = listframe
+                    optbtn.BackgroundColor3 = currentAccentColor
+                    optbtn.BackgroundTransparency = isSelected(opt) and 0 or 1
+                    optbtn.Size = UDim2.new(1, -8, 0, 30)
+                    optbtn.Position = UDim2.new(0, 4, 0, 0)
+                    optbtn.Font = Enum.Font.GothamMedium
+                    optbtn.Text = opt
+                    
+                    if isSelected(opt) then
+                        optbtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    else
+                        registerTheme(optbtn, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
+                    end
+                    
+                    optbtn.TextSize = 14
+                    optbtn.AutoButtonColor = false
+                    optbtn.ZIndex = 6
+
+                    local uc_ob = Instance.new("UICorner")
+                    uc_ob.CornerRadius = UDim.new(0, 7)
+                    uc_ob.Parent = optbtn
+
+                    optbtn.MouseEnter:Connect(function()
+                        if not isSelected(opt) then
+                            TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 0.5}):Play()
+                        end
+                    end)
+                    optbtn.MouseLeave:Connect(function()
+                        if not isSelected(opt) then
+                            TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+                        end
+                    end)
+
+                    optbtn.MouseButton1Click:Connect(function()
+                        if isSelected(opt) then
+                            for i, v in ipairs(currentValues) do
+                                if v == opt then table.remove(currentValues, i) break end
+                            end
+                            optbtn.BackgroundTransparency = 1
+                            registerTheme(optbtn, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
+                        else
+                            table.insert(currentValues, opt)
+                            optbtn.BackgroundTransparency = 0
+                            optbtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        end
+                        updateLabel()
+                        if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValues end
+                        if callback then callback(currentValues) end
+                    end)
+                end
+            end
+            DropdownObj:Refresh(options)
+            
+            ConfigManager.Elements[flag] = { Value = currentValues, Set = function(self, val) currentValues = val; updateLabel(); DropdownObj:Refresh(options); if callback then callback(val) end end }
+
+            dropbtn.MouseButton1Click:Connect(function()
+                if opened then
+                    closeList()
+                else
+                    openList()
+                end
+            end)
+
+            UserInputService.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    local mpos = UserInputService:GetMouseLocation()
+                    local dbPos = dropbtn.AbsolutePosition
+                    local dbSize = dropbtn.AbsoluteSize
+                    local inBtn = mpos.X >= dbPos.X and mpos.X <= dbPos.X + dbSize.X and mpos.Y >= dbPos.Y and mpos.Y <= dbPos.Y + dbSize.Y
+                    
+                    local lPos = listframe.AbsolutePosition
+                    local lSize = listframe.AbsoluteSize
+                    local inList = mpos.X >= lPos.X and mpos.X <= lPos.X + lSize.X and mpos.Y >= lPos.Y and mpos.Y <= lPos.Y + lSize.Y
+                    if not inBtn and not inList then
+                        closeList()
+                    end
+                end
+            end)
+            return DropdownObj
+        end
+
         function sec:ColorPicker(name, default, callback, flag)
             flag = flag or name
             local cprow = Instance.new("TextLabel")
@@ -1763,10 +1989,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             cprow.BackgroundTransparency = 1
             cprow.BorderSizePixel = 0
             cprow.Size = UDim2.new(1, 0, 0, 37)
-            cprow.Font = Enum.Font.Gotham
+            cprow.Font = Enum.Font.GothamMedium
             cprow.Text = name
-            registerTheme(cprow, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            cprow.TextSize = 21
+            registerTheme(cprow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            cprow.TextSize = 16
             cprow.TextWrapped = true
             cprow.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1782,7 +2008,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             preview.BorderSizePixel = 0
 
             local uc_cp = Instance.new("UICorner")
-            uc_cp.CornerRadius = UDim.new(0, 9)
+            uc_cp.CornerRadius = UDim.new(0, 8)
             uc_cp.Parent = preview
 
             local us_cp = Instance.new("UIStroke", preview)
@@ -1999,22 +2225,22 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             kbrow.BackgroundTransparency = 1
             kbrow.BorderSizePixel = 0
             kbrow.Size = UDim2.new(1, 0, 0, 37)
-            kbrow.Font = Enum.Font.Gotham
+            kbrow.Font = Enum.Font.GothamMedium
             kbrow.Text = name
-            registerTheme(kbrow, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            kbrow.TextSize = 21
+            registerTheme(kbrow, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+            kbrow.TextSize = 16
             kbrow.TextWrapped = true
             kbrow.TextXAlignment = Enum.TextXAlignment.Left
 
             local kbbtn = Instance.new("TextButton")
             kbbtn.Name = "kbbtn"
             kbbtn.Parent = kbrow
-            registerTheme(kbbtn, "BackgroundColor3", Color3.fromRGB(240, 240, 240), Color3.fromRGB(45, 45, 45))
+            registerTheme(kbbtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
             kbbtn.Position = UDim2.new(1, -70, 0.5, -17)
             kbbtn.Size = UDim2.new(0, 70, 0, 34)
-            kbbtn.Font = Enum.Font.GothamMedium
+            kbbtn.Font = Enum.Font.GothamBold
             kbbtn.TextColor3 = currentAccentColor
-            kbbtn.TextSize = 16
+            kbbtn.TextSize = 14
             kbbtn.AutoButtonColor = false
             kbbtn.Text = default and default.Name or "None"
             kbbtn.ZIndex = 3
@@ -2098,8 +2324,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             pcontent.Position = UDim2.new(0, 0, 0, 24)
             pcontent.Font = Enum.Font.Gotham
             pcontent.Text = content
-            registerTheme(pcontent, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-            pcontent.TextSize = 17
+            registerTheme(pcontent, "TextColor3", Color3.fromRGB(100, 100, 120), Color3.fromRGB(140, 140, 155))
+            pcontent.TextSize = 14
             pcontent.TextWrapped = true
             pcontent.TextXAlignment = Enum.TextXAlignment.Left
         end
@@ -2230,13 +2456,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
         end, "Settings_Rainbow")
 
-        setsec:Switch("Transparent Sidebar", true, function(v)
+        setsec:Switch("Transparent Sidebar", false, function(v)
             if v then
-                workarea.BackgroundTransparency = 0
-                workareacornerhider.BackgroundTransparency = 0
-            else
                 workarea.BackgroundTransparency = 1
                 workareacornerhider.BackgroundTransparency = 1
+            else
+                workarea.BackgroundTransparency = 0
+                workareacornerhider.BackgroundTransparency = 0
             end
         end, "Settings_TransparentSidebar")
 
