@@ -1130,7 +1130,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             if isNewHighlight then
                 highlight.Position = UDim2.new(0, targetX, 0, targetY)
             else
-                TweenService:Create(highlight, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                TweenService:Create(highlight, TweenInfo.new(0.15, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
                     Position = UDim2.new(0, targetX, 0, targetY)
                 }):Play()
             end
