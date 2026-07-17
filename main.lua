@@ -250,6 +250,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         game:GetService("Debris"):AddItem(splash, 1)
     end
 
+    local isMob = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+    local cScale = isMob and 0.7 or 1.0
+
     local main = Instance.new("CanvasGroup")
     main.Name = "main"
     main.Parent = scrgui
@@ -257,6 +260,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     main.Position = UDim2.new(0.5, 0, 2, 0)
     main.Size = UDim2.new(0, 721, 0, 584)
     registerTheme(main, "BackgroundColor3", Color3.fromRGB(245, 245, 250), Color3.fromRGB(18, 18, 24))
+
+    local uiscale = Instance.new("UIScale")
+    uiscale.Parent = main
+    uiscale.Scale = cScale
 
     main.GroupTransparency = 0.08
     blur:BindFrame(main, {
@@ -2505,6 +2512,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 end
             end
         end, "Settings_BlurBackground")
+
+        setsec:Slider("UI Scale", 0.4, 1.5, cScale, function(v)
+            uiscale.Scale = v
+        end, "Settings_UIScale")
     end
     
     -- credits
