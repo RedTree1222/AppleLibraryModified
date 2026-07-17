@@ -458,7 +458,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
         local neonFolder = workspace.CurrentCamera:FindFirstChild("Neon")
         if neonFolder then neonFolder:Destroy() end
-        customCursor.Visible = false
+        local cc = scrgui:FindFirstChild("CustomCursor")
+        if cc then cc.Visible = false end
         RunService:UnbindFromRenderStep("AppleLibCursorSync")
         UserInputService.MouseIconEnabled = true
         if visibleKeyConn then visibleKeyConn:Disconnect() end
