@@ -1757,6 +1757,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             droplabel.Size = UDim2.new(1, -20, 1, 0)
             droplabel.Position = UDim2.new(0, 10, 0, 0)
             droplabel.Font = Enum.Font.Gotham
+            droplabel.ZIndex = 21
             registerTheme(droplabel, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
             droplabel.TextSize = 14
             droplabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1779,6 +1780,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             arrow.Text = "v"
             arrow.TextColor3 = Color3.fromRGB(95, 95, 95)
             arrow.TextSize = 14
+            arrow.ZIndex = 21
 
             local currentValue = default or (options[1] or "")
 
@@ -1939,6 +1941,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             droplabel.Size = UDim2.new(1, -20, 1, 0)
             droplabel.Position = UDim2.new(0, 10, 0, 0)
             droplabel.Font = Enum.Font.Gotham
+            droplabel.ZIndex = 21
             registerTheme(droplabel, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
             droplabel.TextSize = 14
             droplabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1960,6 +1963,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             arrow.Text = "v"
             arrow.TextColor3 = Color3.fromRGB(95, 95, 95)
             arrow.TextSize = 14
+            arrow.ZIndex = 21
 
             local currentValues = {}
             for _, v in ipairs(defaultOptions) do table.insert(currentValues, v) end
