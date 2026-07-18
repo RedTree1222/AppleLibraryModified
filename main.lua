@@ -2063,12 +2063,15 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     uc_ob.CornerRadius = UDim.new(0, 7)
                     uc_ob.Parent = optbtn
 
+                    local isHovering = false
                     optbtn.MouseEnter:Connect(function()
+                        isHovering = true
                         if not isSelected(opt) then
                             TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 0.5}):Play()
                         end
                     end)
                     optbtn.MouseLeave:Connect(function()
+                        isHovering = false
                         if not isSelected(opt) then
                             TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
                         end
@@ -2079,11 +2082,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                             for i, v in ipairs(currentValues) do
                                 if v == opt then table.remove(currentValues, i) break end
                             end
-                            optbtn.BackgroundTransparency = 1
+                            local targetTrans = isHovering and 0.5 or 1
+                            TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = targetTrans}):Play()
                             registerTheme(optbtn, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
                         else
                             table.insert(currentValues, opt)
-                            optbtn.BackgroundTransparency = 0
+                            TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
                             optbtn.TextColor3 = Color3.fromRGB(255, 255, 255)
                         end
                         updateLabel()
