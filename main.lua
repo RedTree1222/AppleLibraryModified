@@ -2714,30 +2714,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255))
         })
         
-        local glow = redTree:Clone()
-        glow.Name = "Glow"
-        glow.Parent = redTreeContainer
-        glow.ZIndex = 1
-        glow.TextTransparency = 0.3
-        
-        local glowStroke = Instance.new("UIStroke", glow)
-        glowStroke.Thickness = 4
-        glowStroke.Color = Color3.fromRGB(255, 255, 255)
-        glowStroke.Transparency = 0.6
-        
-        local gradGlow = Instance.new("UIGradient", glowStroke)
-        gradGlow.Color = grad1.Color
-        
-        local gradGlowText = glow:FindFirstChild("UIGradient")
-        
         task.spawn(function()
             local rot = 0
             while task.wait() do
                 if not redTree.Parent then break end
                 rot = rot + 0.3
                 grad1.Rotation = rot
-                gradGlow.Rotation = rot
-                if gradGlowText then gradGlowText.Rotation = rot end
             end
         end)
         
