@@ -2741,6 +2741,37 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
         end)
         
+        local zoroC = Instance.new("Frame")
+        zoroC.Parent = container
+        zoroC.Size = UDim2.new(1, 0, 0, 45)
+        zoroC.BackgroundTransparency = 1
+
+        local zoroT = Instance.new("TextLabel")
+        zoroT.Parent = zoroC
+        zoroT.Size = UDim2.new(1, 0, 1, 0)
+        zoroT.BackgroundTransparency = 1
+        zoroT.Font = Enum.Font.FredokaOne
+        zoroT.Text = "Zoro"
+        zoroT.TextSize = 28
+        zoroT.TextColor3 = Color3.fromRGB(255, 255, 255)
+        zoroT.ZIndex = 2
+
+        local zoroG = Instance.new("UIGradient", zoroT)
+        zoroG.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 140, 0)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 200, 50)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 160, 20))
+        })
+
+        task.spawn(function()
+            local r = 0
+            while task.wait() do
+                if not zoroT.Parent then break end
+                r = r + 0.15
+                zoroG.Rotation = r
+            end
+        end)
+        
         credSec:Divider("Original Creator")
         
         local hamza = Instance.new("TextLabel")
