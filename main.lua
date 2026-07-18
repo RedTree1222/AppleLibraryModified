@@ -282,6 +282,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         local fab = Instance.new("ImageButton")
         fab.Name = "MobileFAB"
         fab.Parent = scrgui
+        fab.ZIndex = 99999
         fab.AnchorPoint = Vector2.new(1, 0.5)
         fab.Position = UDim2.new(1, -20, 0.5, 0)
         fab.Size = UDim2.new(0, 46, 0, 46)
