@@ -96,7 +96,6 @@ window:ToggleVisible()
 ```lua
 window:GreenButton(callback: function)
 ```
-# Apple Library: Images
 
 # Apple Library: Images
 
