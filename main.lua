@@ -1247,14 +1247,19 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         local sidebar2 = Instance.new("TextButton")
         sidebar2.Name = "sidebar2"
         sidebar2.Parent = sidebar
-        sidebar2.BackgroundColor3 = currentAccentColor
-        sidebar2.BackgroundTransparency = 1
+        local bgL = Color3.fromRGB(0, 0, 0)
+        local bgD = Color3.fromRGB(255, 255, 255)
+        local txtL = Color3.fromRGB(100, 100, 100)
+        local txtD = Color3.fromRGB(140, 140, 155)
+
+        sidebar2.BackgroundColor3 = (currentTheme == "light") and bgL or bgD
+        sidebar2.BackgroundTransparency = 0.93
         sidebar2.Size = UDim2.new(0, 226, 0, 34)
         sidebar2.ZIndex = 20
         sidebar2.AutoButtonColor = false
         sidebar2.Font = Enum.Font.GothamMedium
         sidebar2.Text = name
-        sidebar2.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
+        sidebar2.TextColor3 = (currentTheme == "light") and txtL or txtD
         sidebar2.TextSize = 15
 
         local uc_10 = Instance.new("UICorner")
@@ -1297,8 +1302,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             if workareamain.Visible then return end
 
             for b, v in next, sections do
-                v.BackgroundTransparency = 1
-                v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
+                v.BackgroundColor3 = (currentTheme == "light") and bgL or bgD
+                v.BackgroundTransparency = 0.93
+                v.TextColor3 = (currentTheme == "light") and txtL or txtD
                 v.Name = "sidebar2"
             end
             sidebar2.BackgroundTransparency = 1
