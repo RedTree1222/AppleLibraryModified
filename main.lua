@@ -2653,11 +2653,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         setsec:Switch("Transparent Sidebar", false, function(v)
             if v then
-                workarea.BackgroundTransparency = 1
-                workareacornerhider.BackgroundTransparency = 1
-            else
                 workarea.BackgroundTransparency = 0
                 workareacornerhider.BackgroundTransparency = 0
+            else
+                workarea.BackgroundTransparency = 1
+                workareacornerhider.BackgroundTransparency = 1
             end
         end, "Settings_TransparentSidebar")
 
