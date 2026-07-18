@@ -1,7 +1,7 @@
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/refs/heads/main/main.lua"))()
 
 library.FolderName = "Example"
-library.ButtonStyle = "Modern"
+library.ButtonStyle = "Modern" -- no variants yet
 
 local window = library:init("Example", true, Enum.KeyCode.LeftControl, true)
 
