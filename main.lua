@@ -157,6 +157,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     ConfigManager:LoadTheme()
     currentTheme = ConfigManager.CurrentTheme
 
+    local errorCatcherEnabled = false
+
     if syn then
         cg = game:GetService("CoreGui")
         local oldGui = cg:FindFirstChild("ScreenGui")
@@ -2661,6 +2663,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
         end, "Settings_TransparentSidebar")
 
+        setsec:Switch("Global Error Catcher", false, function(v)
+            errorCatcherEnabled = v
+        end, "Settings_ErrorCatcher")
+
         setsec:Switch("Blur Background", true, function(v)
             blurEnabled = v
             if v and visible then
@@ -2773,6 +2779,21 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             window:TempNotify("AutoLoad", "Loaded config: " .. autoloadConfig, "rbxassetid://12608259004")
         end)
     end
+
+    local ScriptContext = game:GetService("ScriptContext")
+    local seenErrors = {}
+    ScriptContext.Error:Connect(function(message, trace, script)
+        if errorCatcherEnabled then
+            local errMsg = tostring(message)
+            if not seenErrors[errMsg] then
+                seenErrors[errMsg] = true
+                task.spawn(function()
+                    task.wait(0.5)
+                    window:TempNotify("⚠️ Script Error", errMsg, "rbxassetid://12608259004")
+                end)
+            end
+        end
+    end)
 
     return window
 end
