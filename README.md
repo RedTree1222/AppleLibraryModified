@@ -98,14 +98,21 @@ window:GreenButton(callback: function)
 ```
 # Apple Library: Images
 
-![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot 2026-07-18 075132.png)
+# Apple Library: Images
+
+![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075132.png)
+
 ### Window
 ![image](https://user-images.githubusercontent.com/82454201/221863995-7f86524a-c4ea-4123-8978-d57a99421b7c.png)
+
 ### Splash
-![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot 2026-07-18 075116.png
+![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075116.png)
+
 ### Temporary Notification
-![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot 2026-07-18 075056.png)
+![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075056.png)
+
 ### Notification 1
-![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot 2026-07-18 075104.png)
+![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075104.png)
+
 ### Notification 2
 # Any inquiries? Contact me on Discord: external.py
