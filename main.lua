@@ -13,6 +13,13 @@ local blurEnabled = true
 local cleanupKeybinds = {}
 local cleanupToggles = {}
 
+local registeredElements = {}
+local activeKeybindData = {} 
+local isPromptingKeybind = false
+local keybindPromptCallback = nil
+local keybindPromptElementName = nil
+local refreshKeybindsUI = nil
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -55,11 +62,14 @@ local ConfigManager = {
 
 -- save cfg
 function ConfigManager:Save(name)
-    local data = {}
+    local data = { Elements = {}, Keybinds = {} }
     for flag, element in pairs(self.Elements) do
         if element.Value ~= nil then
-            data[flag] = element.Value
+            data.Elements[flag] = element.Value
         end
+    end
+    for _, bindInfo in ipairs(activeKeybindData) do
+        data.Keybinds[bindInfo.Name] = { Key = bindInfo.Key, Enabled = bindInfo.Enabled }
     end
     if makefolder and not isfolder(lib.FolderName) then makefolder(lib.FolderName) end
     if makefolder and not isfolder(lib.FolderName .. "/Configs") then makefolder(lib.FolderName .. "/Configs") end
@@ -74,10 +84,30 @@ function ConfigManager:Load(name)
     if ok and type(content) == "string" and content ~= "" then
         local success, data = pcall(function() return HttpService:JSONDecode(content) end)
         if success and data then
-            for flag, value in pairs(data) do
+            local elementsData = data.Elements or data
+            for flag, value in pairs(elementsData) do
                 if self.Elements[flag] and self.Elements[flag].Set then
                     self.Elements[flag]:Set(value)
                 end
+            end
+            if data.Keybinds then
+                for elemName, bindData in pairs(data.Keybinds) do
+                    -- Backward compatibility: if it's a string, just treat as Key and Enabled=true
+                    local keyName = type(bindData) == "table" and bindData.Key or bindData
+                    local isEnabled = type(bindData) == "table" and bindData.Enabled or true
+                    local keyCode = Enum.KeyCode[keyName]
+                    
+                    if keyCode and registeredElements[elemName] then
+                        local alreadyBound = false
+                        for _, existing in ipairs(activeKeybindData) do
+                            if existing.Name == elemName then alreadyBound = true break end
+                        end
+                        if not alreadyBound then
+                            table.insert(activeKeybindData, { Name = elemName, Key = keyName, Enabled = isEnabled, Callback = registeredElements[elemName] })
+                        end
+                    end
+                end
+                if refreshKeybindsUI then refreshKeybindsUI() end
             end
         end
     end
@@ -158,6 +188,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     currentTheme = ConfigManager.CurrentTheme
 
     local errorCatcherEnabled = false
+    
+    local customKeybinds = {}
+    local isPromptingKeybind = false
+    local keybindPromptCallback = nil
 
     if syn then
         cg = game:GetService("CoreGui")
@@ -796,6 +830,46 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     uc_13.CornerRadius = UDim.new(0, 18)
     uc_13.Parent = notifdarkness
 
+    local keybindPromptFrame = Instance.new("Frame")
+    keybindPromptFrame.Name = "keybindPromptFrame"
+    keybindPromptFrame.Parent = main
+    keybindPromptFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    registerTheme(keybindPromptFrame, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(40, 40, 40))
+    keybindPromptFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    keybindPromptFrame.Size = UDim2.new(0, 304, 0, 160)
+    keybindPromptFrame.Visible = false
+    keybindPromptFrame.ZIndex = 101
+
+    local uc_kp = Instance.new("UICorner")
+    uc_kp.CornerRadius = UDim.new(0, 18)
+    uc_kp.Parent = keybindPromptFrame
+
+    local kpTitle = Instance.new("TextLabel")
+    kpTitle.Name = "kpTitle"
+    kpTitle.Parent = keybindPromptFrame
+    kpTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    kpTitle.BackgroundTransparency = 1
+    kpTitle.Position = UDim2.new(0, 0, 0, 30)
+    kpTitle.Size = UDim2.new(1, 0, 0, 50)
+    kpTitle.ZIndex = 102
+    kpTitle.Font = Enum.Font.GothamMedium
+    kpTitle.Text = "Press a key to bind..."
+    registerTheme(kpTitle, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
+    kpTitle.TextSize = 24
+
+    local kpSub = Instance.new("TextLabel")
+    kpSub.Name = "kpSub"
+    kpSub.Parent = keybindPromptFrame
+    kpSub.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    kpSub.BackgroundTransparency = 1
+    kpSub.Position = UDim2.new(0, 0, 0, 80)
+    kpSub.Size = UDim2.new(1, 0, 0, 30)
+    kpSub.ZIndex = 102
+    kpSub.Font = Enum.Font.Gotham
+    kpSub.Text = "Press ESC to cancel"
+    registerTheme(kpSub, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(150, 150, 170))
+    kpSub.TextSize = 16
+
     local notiftitle = Instance.new("TextLabel")
     notiftitle.Name = "notiftitle"
     notiftitle.Parent = notif
@@ -1150,6 +1224,16 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
 
     -- standard notif
+    function window:PromptKeybind(callback, elementName)
+        if notif.Visible == true or notif2.Visible == true then return "Already visible" end
+        isPromptingKeybind = true
+        keybindPromptCallback = callback
+        keybindPromptElementName = elementName
+        
+        notifdarkness.Visible = true
+        keybindPromptFrame.Visible = true
+    end
+
     function window:Notify(txt1, txt2, b1, icohn, callback)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
         notiftitle.Text = txt1
@@ -1398,6 +1482,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- btn
         function sec:Button(name, callback)
+            local flag = name
+            registeredElements[flag] = callback
+            
             local button = Instance.new("TextButton")
             button.Name = "button"
             button.Text = name
@@ -1444,6 +1531,10 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
             button.MouseButton1Click:Connect(function()
                 if callback then callback() end
+            end)
+            
+            button.MouseButton2Click:Connect(function()
+                window:PromptKeybind(callback, flag)
             end)
         end
 
@@ -1551,6 +1642,15 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
             Frame.MouseButton1Click:Connect(toggle)
             TextButton.MouseButton1Click:Connect(toggle)
+
+            Frame.MouseButton2Click:Connect(function()
+                window:PromptKeybind(toggle, flag)
+            end)
+            TextButton.MouseButton2Click:Connect(function()
+                window:PromptKeybind(toggle, flag)
+            end)
+            
+            registeredElements[flag] = toggle
 
             ConfigManager.Elements[flag] = { Value = mode, Set = function(self, val) if mode ~= val then toggle() end end }
         end
@@ -1859,6 +1959,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     if child:IsA("TextButton") then child:Destroy() end
                 end
                 options = newOptions
+                if #options > 0 then
+                    currentValue = options[1]
+                    droplabel.Text = currentValue
+                    if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
+                    if callback then callback(currentValue) end
+                end
                 for _, opt in ipairs(options) do
                     local optbtn = Instance.new("TextButton")
                     optbtn.Name = "optbtn"
@@ -1895,7 +2001,43 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     end)
                 end
             end
-            DropdownObj:Refresh(options)
+            -- Note: We do not call DropdownObj:Refresh(options) here initially to avoid firing the callback twice,
+            -- we just manually construct the initial options.
+            for _, opt in ipairs(options) do
+                local optbtn = Instance.new("TextButton")
+                optbtn.Name = "optbtn"
+                optbtn.Parent = listframe
+                optbtn.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+                optbtn.BackgroundTransparency = 1
+                optbtn.Size = UDim2.new(1, -8, 0, 30)
+                optbtn.Position = UDim2.new(0, 4, 0, 0)
+                optbtn.Font = Enum.Font.GothamMedium
+                optbtn.Text = opt
+                registerTheme(optbtn, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
+                optbtn.TextSize = 14
+                optbtn.AutoButtonColor = false
+                optbtn.ZIndex = 35
+
+                local uc_ob = Instance.new("UICorner")
+                uc_ob.CornerRadius = UDim.new(0, 7)
+                uc_ob.Parent = optbtn
+
+                optbtn.MouseEnter:Connect(function()
+                    TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 0.5}):Play()
+                end)
+                optbtn.MouseLeave:Connect(function()
+                    TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+                end)
+
+                optbtn.MouseButton1Click:Connect(function()
+                    TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+                    currentValue = opt
+                    if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
+                    droplabel.Text = opt
+                    closeList()
+                    if callback then callback(currentValue) end
+                end)
+            end
             
             ConfigManager.Elements[flag] = { Value = currentValue, Set = function(self, val) currentValue = val; droplabel.Text = val; if callback then callback(val) end end }
 
@@ -2539,9 +2681,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         local setsec = window:Section("⚙️ Settings")
         setsec:Divider("Config Manager")
         
-        local activeConfig = "Default"
         local configsList = ConfigManager:GetConfigs()
         if #configsList == 0 then configsList = {"Default"} end
+        local activeConfig = configsList[1]
         
         local configDropdown = setsec:Dropdown("Select Config", configsList, configsList[1], function(opt)
             activeConfig = opt
@@ -2780,8 +2922,117 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end)
     end
     
+    local keybindSec = nil
+    local function CreateKeybindsTab()
+        keybindSec = window:Section("⌨️ Keybinds")
+        
+        refreshKeybindsUI = function()
+            local container = keybindSec:GetContainer()
+            for _, child in ipairs(container:GetChildren()) do
+                if child.Name == "kbrow" or child.Name == "label" then
+                    child:Destroy()
+                end
+            end
+            
+            for index, bindInfo in ipairs(activeKeybindData) do
+                local kbrow = Instance.new("Frame")
+                kbrow.Name = "kbrow"
+                kbrow.Parent = container
+                kbrow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                kbrow.BackgroundTransparency = 1
+                kbrow.Size = UDim2.new(1, 0, 0, 37)
+                
+                local tglFrame = Instance.new("TextButton")
+                tglFrame.Parent = kbrow
+                tglFrame.ZIndex = 20
+                tglFrame.Position = UDim2.new(0, 0, 0.5, -14)
+                tglFrame.Size = UDim2.new(0, 56, 0, 28)
+                tglFrame.Text = ""
+                tglFrame.AutoButtonColor = false
+                tglFrame.BackgroundColor3 = bindInfo.Enabled and currentAccentColor or ((currentTheme == "light") and Color3.fromRGB(216, 216, 216) or Color3.fromRGB(60, 60, 60))
+                local uc_tgl = Instance.new("UICorner")
+                uc_tgl.CornerRadius = UDim.new(5, 0)
+                uc_tgl.Parent = tglFrame
+                
+                local tglBtn = Instance.new("TextButton")
+                tglBtn.Parent = tglFrame
+                tglBtn.ZIndex = 21
+                tglBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                tglBtn.Size = UDim2.new(0, 26, 0, 26)
+                tglBtn.Position = bindInfo.Enabled and UDim2.new(0, 29, 0, 1) or UDim2.new(0, 1, 0, 1)
+                tglBtn.AutoButtonColor = false
+                tglBtn.Text = ""
+                local uc_tglb = Instance.new("UICorner")
+                uc_tglb.CornerRadius = UDim.new(5, 0)
+                uc_tglb.Parent = tglBtn
+                
+                local function toggleBind()
+                    bindInfo.Enabled = not bindInfo.Enabled
+                    if bindInfo.Enabled then
+                        tglBtn:TweenPosition(UDim2.new(0, 29, 0, 1), "In", "Sine", 0.1, true)
+                        tglFrame.BackgroundColor3 = currentAccentColor
+                    else
+                        tglBtn:TweenPosition(UDim2.new(0, 1, 0, 1), "In", "Sine", 0.1, true)
+                        tglFrame.BackgroundColor3 = (currentTheme == "light") and Color3.fromRGB(216, 216, 216) or Color3.fromRGB(60, 60, 60)
+                    end
+                end
+                tglFrame.MouseButton1Click:Connect(toggleBind)
+                tglBtn.MouseButton1Click:Connect(toggleBind)
+
+                local kblabel = Instance.new("TextLabel")
+                kblabel.Parent = kbrow
+                kblabel.BackgroundTransparency = 1
+                kblabel.Position = UDim2.new(0, 66, 0, 0)
+                kblabel.Size = UDim2.new(1, -170, 1, 0)
+                kblabel.Font = Enum.Font.GothamMedium
+                kblabel.Text = bindInfo.Name
+                registerTheme(kblabel, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+                kblabel.TextSize = 16
+                kblabel.TextXAlignment = Enum.TextXAlignment.Left
+
+                local rebindBtn = Instance.new("TextButton")
+                rebindBtn.Parent = kbrow
+                rebindBtn.ZIndex = 20
+                rebindBtn.Position = UDim2.new(1, -95, 0.5, -14)
+                rebindBtn.Size = UDim2.new(0, 60, 0, 28)
+                rebindBtn.Font = Enum.Font.GothamMedium
+                rebindBtn.Text = "[" .. bindInfo.Key .. "]"
+                registerTheme(rebindBtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
+                registerTheme(rebindBtn, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(200, 200, 200))
+                rebindBtn.TextSize = 14
+                local uc_reb = Instance.new("UICorner")
+                uc_reb.CornerRadius = UDim.new(0, 6)
+                uc_reb.Parent = rebindBtn
+                
+                rebindBtn.MouseButton1Click:Connect(function()
+                    window:PromptKeybind(bindInfo.Callback, bindInfo.Name)
+                end)
+
+                local delBtn = Instance.new("TextButton")
+                delBtn.Parent = kbrow
+                delBtn.ZIndex = 20
+                delBtn.Position = UDim2.new(1, -30, 0.5, -14)
+                delBtn.Size = UDim2.new(0, 28, 0, 28)
+                delBtn.Font = Enum.Font.GothamMedium
+                delBtn.Text = "🗑️"
+                registerTheme(delBtn, "BackgroundColor3", Color3.fromRGB(255, 100, 100), Color3.fromRGB(180, 50, 50))
+                delBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                delBtn.TextSize = 16
+                local uc_del = Instance.new("UICorner")
+                uc_del.CornerRadius = UDim.new(0, 6)
+                uc_del.Parent = delBtn
+                
+                delBtn.MouseButton1Click:Connect(function()
+                    table.remove(activeKeybindData, index)
+                    refreshKeybindsUI()
+                end)
+            end
+        end
+    end
+    
     CreateSettingsTab()
     CreateCreditsTab()
+    CreateKeybindsTab()
 
 
     local autoloadConfig = ConfigManager:GetAutoLoad()
@@ -2804,6 +3055,43 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     task.wait(0.5)
                     window:TempNotify("⚠️ Script Error", errMsg, "rbxassetid://12608259004")
                 end)
+            end
+        end
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if isPromptingKeybind and input.UserInputType == Enum.UserInputType.Keyboard then
+            if input.KeyCode == Enum.KeyCode.Escape then
+                isPromptingKeybind = false
+                if keybindPromptFrame then keybindPromptFrame.Visible = false end
+                if notifdarkness then notifdarkness.Visible = false end
+            elseif input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode ~= Enum.KeyCode.Backspace then
+                isPromptingKeybind = false
+                if keybindPromptFrame then keybindPromptFrame.Visible = false end
+                if notifdarkness then notifdarkness.Visible = false end
+                
+                -- Remove existing bind for this element if rebinding
+                for i = #activeKeybindData, 1, -1 do
+                    if activeKeybindData[i].Name == keybindPromptElementName then
+                        table.remove(activeKeybindData, i)
+                    end
+                end
+                
+                table.insert(activeKeybindData, { Name = keybindPromptElementName, Key = input.KeyCode.Name, Enabled = true, Callback = keybindPromptCallback })
+                
+                if refreshKeybindsUI then refreshKeybindsUI() end
+                window:TempNotify("Keybind Set", "Bound to: " .. input.KeyCode.Name, "rbxassetid://12608259004")
+            end
+            return
+        end
+
+        if not isPromptingKeybind and not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
+            for _, bindInfo in ipairs(activeKeybindData) do
+                if bindInfo.Enabled and bindInfo.Key == input.KeyCode.Name then
+                    if bindInfo.Callback then
+                        pcall(bindInfo.Callback)
+                    end
+                end
             end
         end
     end)
