@@ -311,6 +311,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 fabDrag = true
                 fabStart = input.Position
                 fabStartPos = fab.Position
+                for _, v in ipairs(scrgui:GetDescendants()) do
+                    if v:IsA("ScrollingFrame") then v.ScrollingEnabled = false end
+                end
             end
         end)
         
@@ -327,6 +330,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     local dist = (input.Position - fabStart).Magnitude
                     if dist < 10 then
                         if window.ToggleVisible then window:ToggleVisible() end
+                    end
+                end
+                if fabDrag then
+                    for _, v in ipairs(scrgui:GetDescendants()) do
+                        if v:IsA("ScrollingFrame") then v.ScrollingEnabled = true end
                     end
                 end
                 fabDrag = false
