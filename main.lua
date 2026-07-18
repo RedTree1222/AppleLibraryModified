@@ -309,6 +309,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         fab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                 fabDrag = true
+                _G.AppleLibFabDragging = true
                 fabStart = input.Position
                 fabStartPos = fab.Position
                 for _, v in ipairs(scrgui:GetDescendants()) do
@@ -338,6 +339,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     end
                 end
                 fabDrag = false
+                _G.AppleLibFabDragging = false
             end
         end)
     end
@@ -395,6 +397,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end
 
     UserInputService.InputChanged:Connect(function(input)
+        if _G.AppleLibFabDragging then dragging = false return end
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             updateDrag(input)
         end
@@ -701,6 +704,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     setupResize(resizeCorner, "corner")
 
     UserInputService.InputChanged:Connect(function(input)
+        if _G.AppleLibFabDragging then activeResize = false return end
         if activeResize and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - resizeStartMouse
             local newWidth = main.Size.X.Offset
@@ -1716,6 +1720,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end)
 
             UserInputService.InputChanged:Connect(function(input)
+                if _G.AppleLibFabDragging then draggingSlider = false return end
                 if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                     local relX = math.clamp(input.Position.X - rail.AbsolutePosition.X, 0, rail.AbsoluteSize.X)
                     setValue(min + (max - min) * (relX / rail.AbsoluteSize.X))
@@ -2333,6 +2338,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end)
 
             UserInputService.InputChanged:Connect(function(input)
+                if _G.AppleLibFabDragging then draggingHSV = false draggingHue = false return end
                 if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                     if draggingHSV then
                         local relX = math.clamp(input.Position.X - hsvmap.AbsolutePosition.X, 0, hsvmap.AbsoluteSize.X)
