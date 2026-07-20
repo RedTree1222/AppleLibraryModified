@@ -5,10 +5,17 @@ lib.FolderName = "AppleLibraryModified"
 local sections = {}
 local workareas = {}
 local notifs = {}
+local mainTabs = {}
+local extraTabs = {}
+local isExtraMode = false
+local tabSwapCooldown = false
+local isSidebarCollapsed = false
+local expandedSidebarWidth = 190
+local collapseCooldown = false
 local visible = true
 local dbcooper = false
 local scrollSyncConnected = false
-local blurEnabled = true
+local blurEnabled = false
 
 local cleanupKeybinds = {}
 local cleanupToggles = {}
@@ -64,7 +71,7 @@ local ConfigManager = {
 function ConfigManager:Save(name)
     local data = { Elements = {}, Keybinds = {} }
     for flag, element in pairs(self.Elements) do
-        if element.Value ~= nil then
+        if element.Value ~= nil and not string.find(flag, "^Settings_") then
             data.Elements[flag] = element.Value
         end
     end
@@ -151,26 +158,64 @@ function ConfigManager:GetAutoLoad()
     return nil
 end
 
-function ConfigManager:SaveTheme(theme)
-    self.CurrentTheme = theme
+function ConfigManager:SaveUISettings()
     if makefolder and not isfolder(lib.FolderName) then makefolder(lib.FolderName) end
-    writefile(lib.FolderName .. "/theme.json", HttpService:JSONEncode({theme = theme}))
+    local data = {
+        theme = self.CurrentTheme,
+        disableSplash = self.DisableSplash,
+        accentR = self.AccentColor and self.AccentColor.R or nil,
+        accentG = self.AccentColor and self.AccentColor.G or nil,
+        accentB = self.AccentColor and self.AccentColor.B or nil,
+        rainbow = self.Rainbow,
+        welcomeShown = self.WelcomeShown,
+        Settings = {}
+    }
+    for flag, element in pairs(self.Elements) do
+        if element.Value ~= nil and type(flag) == "string" and string.find(flag, "^Settings_") then
+            data.Settings[flag] = element.Value
+        end
+    end
+    writefile(lib.FolderName .. "/ui_settings.json", HttpService:JSONEncode(data))
 end
 
-function ConfigManager:LoadTheme()
-    local path = lib.FolderName .. "/theme.json"
+function ConfigManager:LoadUISettings()
+    local path = lib.FolderName .. "/ui_settings.json"
     if isfile and not isfile(path) then return end
     local ok, content = pcall(function() return readfile(path) end)
     if ok and type(content) == "string" and content ~= "" then
         local success, data = pcall(function() return HttpService:JSONDecode(content) end)
-        if success and data and data.theme then
-            self.CurrentTheme = data.theme
+        if success and data then
+            if data.theme then self.CurrentTheme = data.theme end
+            if data.disableSplash ~= nil then self.DisableSplash = data.disableSplash end
+            if data.accentR and data.accentG and data.accentB then self.AccentColor = Color3.new(data.accentR, data.accentG, data.accentB) end
+            if data.rainbow ~= nil then self.Rainbow = data.rainbow end
+            if data.Settings then
+                for flag, val in pairs(data.Settings) do
+                    if self.Elements[flag] then
+                        self.Elements[flag]:Set(val)
+                    else
+                        self.Elements[flag] = { Value = val }
+                    end
+                end
+            end
         end
     end
 end
 
 local currentTheme = ConfigManager.CurrentTheme
 local currentAccentColor = Color3.fromRGB(21, 103, 251)
+
+local iconMap = {
+    ["arrow-left-to-line"] = "rbxassetid://10709768114",
+    ["refresh-ccw"] = "rbxassetid://10734933056",
+    ["settings"] = "rbxassetid://10734950309",
+    ["users"] = "rbxassetid://10747373426",
+    ["keyboard"] = "rbxassetid://10723416765",
+    ["bell"] = "rbxassetid://10709775704",
+    ["package"] = "rbxassetid://10734909540",
+    ["warning"] = "rbxassetid://12608260095",
+    ["info"] = "rbxassetid://4871684504"
+}
 
 local function registerTheme(instance, propertyName, lightValue, darkValue)
     table.insert(themeElements, {
@@ -184,55 +229,84 @@ end
 
 -- build main ui
 function lib:init(ti, dosplash, visiblekey, deleteprevious)
-    ConfigManager:LoadTheme()
+    ConfigManager:LoadUISettings()
+    -- Load script-specific menu bind
+    do
+        local bindPath = lib.FolderName .. "/menu_bind.txt"
+        if isfile and isfile(bindPath) then
+            local ok, saved = pcall(readfile, bindPath)
+            if ok and saved and saved ~= "" then
+                local kc = Enum.KeyCode[saved]
+                if kc then visiblekey = kc end
+            end
+        end
+    end
+    
+    local hoverElements = {}
+    local function applyHoverCursor(element)
+        table.insert(hoverElements, element)
+    end
+
+
+    local iconMap = {
+        ["arrow-left-to-line"] = "rbxassetid://10709768114",
+        ["refresh-ccw"] = "rbxassetid://10734933056",
+        ["settings"] = "rbxassetid://10734950309",
+        ["users"] = "rbxassetid://10747373426",
+        ["keyboard"] = "rbxassetid://10723416765",
+        ["bell"] = "rbxassetid://10709775704",
+        ["package"] = "rbxassetid://10734909540",
+        ["warning"] = "rbxassetid://12608260095",
+        ["info"] = "rbxassetid://4871684504"
+    }
+    
+    local function resolveIcon(iconId)
+        if iconMap[iconId] then return iconMap[iconId] end
+        if string.find(iconId, "rbxassetid://") then return iconId end
+        return "rbxassetid://10734909540"
+    end
+
+    local function applyLucide(imgLabel, iconName)
+        if iconMap[iconName] then
+            imgLabel.Image = iconMap[iconName]
+        else
+            imgLabel.Image = "rbxassetid://10734909540" -- default to package
+        end
+    end
     currentTheme = ConfigManager.CurrentTheme
 
     local errorCatcherEnabled = false
+    if ConfigManager.DisableSplash then dosplash = false end
     
     local customKeybinds = {}
     local isPromptingKeybind = false
     local keybindPromptCallback = nil
 
-    if syn then
-        cg = game:GetService("CoreGui")
-        local oldGui = cg:FindFirstChild("ScreenGui")
-        if oldGui and deleteprevious then
-            local oldMain = oldGui:FindFirstChild("main")
-            if oldMain then
-                tp(oldMain, oldMain.Position + UDim2.new(0, 0, 2, 0), 0.5)
+    if deleteprevious then
+        local container = gethui and gethui() or game:GetService("CoreGui")
+        for _, v in pairs(container:GetChildren()) do
+            if v.Name == "AppleLibrary_GUI" then
+                v:Destroy()
             end
-            game:GetService("Debris"):AddItem(oldGui, 1)
         end
-
-        scrgui = Instance.new("ScreenGui")
-        syn.protect_gui(scrgui)
-        scrgui.Parent = game:GetService("CoreGui")
-    elseif gethui then
-        local oldGui = gethui():FindFirstChild("ScreenGui")
-        if oldGui and deleteprevious then
-            local oldMain = oldGui:FindFirstChild("main")
-            if oldMain then
-                tp(oldMain, oldMain.Position + UDim2.new(0, 0, 2, 0), 0.5)
-            end
-            game:GetService("Debris"):AddItem(oldGui, 1)
+        -- Also clean up any lingering DepthOfField effects from previous runs if we're reloading
+        for _, v in pairs(game:GetService("Lighting"):GetChildren()) do
+            if v:IsA("DepthOfFieldEffect") then v:Destroy() end
         end
-
-        scrgui = Instance.new("ScreenGui")
-        scrgui.Parent = gethui()
-    else
-        cg = game:GetService("CoreGui")
-        local oldGui = cg:FindFirstChild("ScreenGui")
-        if oldGui and deleteprevious then
-            local oldMain = oldGui:FindFirstChild("main")
-            if oldMain then
-                tp(oldMain, oldMain.Position + UDim2.new(0, 0, 2, 0), 0.5)
-            end
-            game:GetService("Debris"):AddItem(oldGui, 1)
-        end
-        scrgui = Instance.new("ScreenGui")
-        scrgui.Parent = cg
     end
+    scrgui = Instance.new("ScreenGui")
+    scrgui.Name = "AppleLibrary_GUI"
+    if syn then syn.protect_gui(scrgui) end
+    if gethui then scrgui.Parent = gethui() else scrgui.Parent = game:GetService("CoreGui") end
     scrgui.IgnoreGuiInset = true
+
+    local modalUnlocker = Instance.new("TextButton")
+    modalUnlocker.Name = "ModalUnlocker"
+    modalUnlocker.Parent = scrgui
+    modalUnlocker.BackgroundTransparency = 1
+    modalUnlocker.Text = ""
+    modalUnlocker.Size = UDim2.new(0, 0, 0, 0)
+    modalUnlocker.Modal = false
 
     if dosplash then
         local splash = Instance.new("Frame")
@@ -291,6 +365,84 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local main = Instance.new("Frame")
     main.ClipsDescendants = true
+
+    local keybindsWindowFrame = Instance.new("Frame")
+    keybindsWindowFrame.Name = "keybindsWindowFrame"
+    keybindsWindowFrame.Parent = scrgui
+    keybindsWindowFrame.BorderSizePixel = 0
+    keybindsWindowFrame.Size = UDim2.new(0, 220, 0, 40)
+    keybindsWindowFrame.Position = UDim2.new(0.85, 0, 0.5, 0)
+    keybindsWindowFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    keybindsWindowFrame.AutomaticSize = Enum.AutomaticSize.Y
+    keybindsWindowFrame.Visible = false
+    registerTheme(keybindsWindowFrame, "BackgroundColor3", Color3.fromRGB(249, 249, 255), Color3.fromRGB(18, 18, 24))
+    
+    local kb_uc = Instance.new("UICorner")
+    kb_uc.CornerRadius = UDim.new(0, 8)
+    kb_uc.Parent = keybindsWindowFrame
+    
+    local kb_stroke = Instance.new("UIStroke")
+    kb_stroke.Parent = keybindsWindowFrame
+    kb_stroke.Transparency = 0.8
+    kb_stroke.Thickness = 1
+    registerTheme(kb_stroke, "Color", Color3.fromRGB(216, 216, 216), Color3.fromRGB(40, 40, 40))
+
+    local kb_topbar = Instance.new("Frame")
+    kb_topbar.Name = "topbar"
+    kb_topbar.Parent = keybindsWindowFrame
+    kb_topbar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    kb_topbar.BackgroundTransparency = 1
+    kb_topbar.Size = UDim2.new(1, 0, 0, 40)
+    
+    local kb_title = Instance.new("TextLabel")
+    kb_title.Parent = kb_topbar
+    kb_title.BackgroundTransparency = 1
+    kb_title.Position = UDim2.new(0, 15, 0, 0)
+    kb_title.Size = UDim2.new(1, -30, 1, 0)
+    kb_title.Font = Enum.Font.GothamMedium
+    kb_title.Text = "Keybinds"
+    kb_title.TextSize = 14
+    kb_title.TextXAlignment = Enum.TextXAlignment.Left
+    registerTheme(kb_title, "TextColor3", Color3.fromRGB(100, 100, 100), Color3.fromRGB(140, 140, 155))
+
+    local kb_container = Instance.new("Frame")
+    kb_container.Parent = keybindsWindowFrame
+    kb_container.BackgroundTransparency = 1
+    kb_container.Position = UDim2.new(0, 0, 0, 40)
+    kb_container.Size = UDim2.new(1, 0, 0, 0)
+    kb_container.AutomaticSize = Enum.AutomaticSize.Y
+
+    local kb_layout = Instance.new("UIListLayout")
+    kb_layout.Parent = kb_container
+    kb_layout.SortOrder = Enum.SortOrder.LayoutOrder
+    kb_layout.Padding = UDim.new(0, 5)
+
+    local kb_padding = Instance.new("UIPadding")
+    kb_padding.Parent = kb_container
+    kb_padding.PaddingBottom = UDim.new(0, 10)
+
+    local kbDragging = false
+    local kbDragStart, kbStartPos
+    kb_topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            kbDragging = true
+            kbDragStart = input.Position
+            kbStartPos = keybindsWindowFrame.Position
+            local c; c = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    kbDragging = false
+                    c:Disconnect()
+                end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if kbDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - kbDragStart
+            keybindsWindowFrame.Position = UDim2.new(kbStartPos.X.Scale, kbStartPos.X.Offset + delta.X, kbStartPos.Y.Scale, kbStartPos.Y.Offset + delta.Y)
+        end
+    end)
+
     main.Name = "main"
     main.Parent = scrgui
 
@@ -383,10 +535,6 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     uiscale.Scale = cScale
 
     main.BackgroundTransparency = 0.08
-    blur:BindFrame(blurFrame, {
-        Transparency = 0.98,
-        Color = Color3.fromRGB(255, 255, 255)
-    })
 
     local uc = Instance.new("UICorner")
     uc.CornerRadius = UDim.new(0, 14)
@@ -454,8 +602,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     workarea.Name = "workarea"
     workarea.Parent = main
     registerTheme(workarea, "BackgroundColor3", Color3.fromRGB(238, 238, 245), Color3.fromRGB(24, 24, 32))
-    workarea.Position = UDim2.new(0, 263, 0, 0)
-    workarea.Size = UDim2.new(1, -263, 1, 0)
+    workarea.Position = UDim2.new(0, expandedSidebarWidth + 30, 0, 0)
+    workarea.Size = UDim2.new(1, -(expandedSidebarWidth + 30), 1, 0)
     workarea.BackgroundTransparency = 1
 
     local uc_2 = Instance.new("UICorner")
@@ -470,12 +618,70 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     workareacornerhider.Size = UDim2.new(0, 18, 1, 0)
     workareacornerhider.BackgroundTransparency = 1
 
+    local collapseBtn = Instance.new("ImageButton")
+    collapseBtn.Name = "collapseBtn"
+    collapseBtn.Parent = main
+    collapseBtn.Size = UDim2.new(0, 24, 0, 24)
+    collapseBtn.Position = UDim2.new(0, 18, 1, -44)
+    collapseBtn.BackgroundTransparency = 1
+    collapseBtn.Image = "rbxassetid://10709768114"
+    collapseBtn.ImageColor3 = Color3.fromRGB(140, 140, 155)
+    collapseBtn.ZIndex = 25
+    registerTheme(collapseBtn, "ImageColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+
+    local refreshBtn = Instance.new("ImageButton")
+    refreshBtn.Name = "refreshBtn"
+    applyHoverCursor(refreshBtn)
+    refreshBtn.Parent = main
+    refreshBtn.Size = UDim2.new(0, 24, 0, 24)
+    refreshBtn.Position = UDim2.new(0, 18, 1, -84)
+    refreshBtn.BackgroundTransparency = 1
+    refreshBtn.Image = "rbxassetid://10734933056"
+    refreshBtn.ImageColor3 = Color3.fromRGB(140, 140, 155)
+    refreshBtn.ZIndex = 25
+    registerTheme(refreshBtn, "ImageColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+
+    refreshBtn.MouseButton1Click:Connect(function()
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        TweenService:Create(refreshBtn, tweenInfo, {Rotation = refreshBtn.Rotation + 360}):Play()
+        local vp = workspace.CurrentCamera.ViewportSize
+        local w = math.clamp(721, 400, vp.X - 40)
+        local h = math.clamp(584, 300, vp.Y - 40)
+        TweenService:Create(main, tweenInfo, {Size = UDim2.new(0, w, 0, h)}):Play()
+        
+        expandedSidebarWidth = 190
+        sidebarResizer.Position = UDim2.new(0, 18 + expandedSidebarWidth - 4, 0, 106)
+        if not isSidebarCollapsed then
+            TweenService:Create(sidebar, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth, 1, -124)}):Play()
+            TweenService:Create(workarea, tweenInfo, {
+                Position = UDim2.new(0, expandedSidebarWidth + 30, 0, 0),
+                Size = UDim2.new(1, -(expandedSidebarWidth + 30), 1, 0)
+            }):Play()
+            
+            local searchWidth = expandedSidebarWidth - 8
+            TweenService:Create(search, tweenInfo, {Size = UDim2.new(0, searchWidth, 0, 34)}):Play()
+            
+            for _, btn in ipairs(sidebar:GetChildren()) do
+                if btn:IsA("TextButton") and btn.Name == "sidebar2" then
+                    TweenService:Create(btn, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)}):Play()
+                elseif btn:IsA("TextLabel") and btn.Name == "sidebardivider" then
+                    TweenService:Create(btn, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 20)}):Play()
+                end
+            end
+            
+            local highlight = main:FindFirstChild("TabHighlight")
+            if highlight then
+                TweenService:Create(highlight, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)}):Play()
+            end
+        end
+    end)
+
     local search = Instance.new("Frame")
     search.Name = "search"
     search.Parent = main
     registerTheme(search, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
     search.Position = UDim2.new(0, 18, 0, 56)
-    search.Size = UDim2.new(0, 225, 0, 34)
+    search.Size = UDim2.new(0, isSidebarCollapsed and 26 or 182, 0, 34)
 
     local uc_8 = Instance.new("UICorner")
     uc_8.CornerRadius = UDim.new(0, 10)
@@ -520,32 +726,125 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     sidebar.BackgroundTransparency = 1
     sidebar.BorderSizePixel = 0
     sidebar.Position = UDim2.new(0, 18, 0, 106)
-    sidebar.Size = UDim2.new(0, 233, 1, -124)
+    sidebar.Size = UDim2.new(0, expandedSidebarWidth, 1, -124)
     sidebar.AutomaticCanvasSize = "Y"
     sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
-    sidebar.ScrollBarThickness = 2
+
+    local sidebarResizer = Instance.new("TextButton")
+    sidebarResizer.Name = "sidebarResizer"
+    sidebarResizer.Parent = main
+    sidebarResizer.Size = UDim2.new(0, 8, 1, -124)
+    sidebarResizer.Position = UDim2.new(0, 18 + expandedSidebarWidth - 4, 0, 106)
+    sidebarResizer.BackgroundTransparency = 1
+    sidebarResizer.Text = ""
+    sidebarResizer.ZIndex = 30
+    
+    local sidebarResizing = false
+    local sidebarStartX = 0
+    local sidebarStartWidth = 0
+
+    sidebarResizer.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            sidebarResizing = true
+            sidebarStartX = input.Position.X
+            sidebarStartWidth = expandedSidebarWidth
+            
+            local c; c = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    sidebarResizing = false
+                    c:Disconnect()
+                end
+            end)
+        end
+    end)
+    sidebar.ScrollBarThickness = 0
 
     local ull_2 = Instance.new("UIListLayout")
     ull_2.Parent = sidebar
     ull_2.SortOrder = Enum.SortOrder.LayoutOrder
     ull_2.Padding = UDim.new(0, 3)
 
-    RunService:BindToRenderStep("search", 1, function()
-        if not searchtextbox:IsFocused() then
-            for b, v in next, sidebar:GetChildren() do
-                if not v:IsA("TextButton") then return end
-                v.Visible = true
+    searchtextbox:GetPropertyChangedSignal("Text"):Connect(function()
+        local InputText = string.upper(searchtextbox.Text)
+        
+        local allTabs = {}
+        if isExtraMode then
+            for _, t in ipairs(extraTabs) do table.insert(allTabs, t) end
+        else
+            for _, t in ipairs(mainTabs) do table.insert(allTabs, t) end
+        end
+
+        local highlight = main:FindFirstChild("TabHighlight")
+        local activeTab = nil
+        for _, s in ipairs(sections) do
+            if s.TextColor3 == Color3.fromRGB(255, 255, 255) then
+                activeTab = s
+                break
             end
         end
-        local InputText = string.upper(searchtextbox.Text)
-        for _, button in pairs(sidebar:GetChildren()) do
-            if button:IsA("TextButton") then
-                if InputText == "" or string.find(string.upper(button.Text), InputText) ~= nil then
-                    button.Visible = true
+
+        if InputText == "" then
+            -- Restore normal visibility
+            for _, t in ipairs(allTabs) do
+                local belongsToExtra = false
+                for _, et in ipairs(extraTabs) do if t == et then belongsToExtra = true end end
+                
+                if t.IsDivider then
+                    t.Label.Visible = belongsToExtra and isExtraMode or not isExtraMode
                 else
-                    button.Visible = false
+                    t.TabButton.Visible = belongsToExtra and isExtraMode or not isExtraMode
+                end
+                
+                -- Restore element visibility
+                if t.ElementsList then
+                    for _, elemData in ipairs(t.ElementsList) do
+                        if elemData.gui then elemData.gui.Visible = true end
+                    end
                 end
             end
+            if highlight then highlight.Visible = true end
+        else
+            -- Search active: search all tabs and their internal elements!
+            for _, t in ipairs(allTabs) do
+                if t.IsDivider then
+                    t.Label.Visible = false
+                else
+                    local btn = t.TabButton
+                    local match = false
+                    
+                    if string.find(string.upper(btn.Text), InputText) then
+                        match = true
+                    end
+                    
+                    if t.ElementsList then
+                        for _, elemData in ipairs(t.ElementsList) do
+                            local elemMatch = string.find(elemData.text, InputText) ~= nil
+                            if elemData.gui then elemData.gui.Visible = elemMatch end
+                            if elemMatch then match = true end
+                        end
+                    end
+                    
+                    btn.Visible = match
+                end
+            end
+            if activeTab and highlight then
+                highlight.Visible = activeTab.Visible
+            end
+        end
+        
+        -- Glues the TabHighlight to the active tab as UIListLayout shuffles things around
+        if activeTab and highlight then
+            local connection
+            connection = RunService.RenderStepped:Connect(function()
+                if activeTab and highlight then
+                    highlight.Position = UDim2.new(0, activeTab.AbsolutePosition.X - main.AbsolutePosition.X, 0, activeTab.AbsolutePosition.Y - main.AbsolutePosition.Y)
+                else
+                    if connection then connection:Disconnect() end
+                end
+            end)
+            task.delay(0.2, function()
+                if connection then connection:Disconnect() end
+            end)
         end
     end)
 
@@ -567,6 +866,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local close = Instance.new("TextButton")
     close.Name = "close"
+    applyHoverCursor(close)
     close.Parent = buttons
     close.BackgroundColor3 = Color3.fromRGB(254, 94, 86)
     close.Size = UDim2.new(0, 16, 0, 16)
@@ -609,6 +909,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local minimize = Instance.new("TextButton")
     minimize.Name = "minimize"
+    applyHoverCursor(minimize)
     minimize.Parent = buttons
     minimize.BackgroundColor3 = Color3.fromRGB(255, 189, 46)
     minimize.Size = UDim2.new(0, 16, 0, 16)
@@ -632,6 +933,149 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     resize.Text = ""
     resize.TextColor3 = Color3.fromRGB(255, 50, 50)
     resize.TextSize = 14
+    
+    resize.MouseButton1Click:Connect(function()
+        if tabSwapCooldown then return end
+        tabSwapCooldown = true
+        isExtraMode = not isExtraMode
+
+        local outgoingTabs = isExtraMode and mainTabs or extraTabs
+        local incomingTabs = isExtraMode and extraTabs or mainTabs
+        
+        local highlight = main:FindFirstChild("TabHighlight")
+        if highlight then
+            TweenService:Create(highlight, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                BackgroundTransparency = 1
+            }):Play()
+        end
+
+        -- Phase 1: Animate out
+        for _, t in ipairs(outgoingTabs) do
+            if t.IsDivider then
+                TweenService:Create(t.Label, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                    TextTransparency = 1
+                }):Play()
+            else
+                local btn = t.TabButton
+                TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 0, 0, 34),
+                    TextTransparency = 1,
+                    BackgroundTransparency = 1
+                }):Play()
+                local ico = btn:FindFirstChild("iconImg")
+                if ico then
+                    TweenService:Create(ico, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                        ImageTransparency = 1
+                    }):Play()
+                end
+            end
+        end
+
+        task.delay(0.25, function()
+            -- Phase 2: Swap visibility
+            for _, t in ipairs(outgoingTabs) do
+                if t.IsDivider then t.Label.Visible = false else t.TabButton.Visible = false end
+            end
+            
+            local firstSection = nil
+            local firstIncomingIdx = nil
+            for i, t in ipairs(incomingTabs) do
+                if t.IsDivider and not firstIncomingIdx then firstIncomingIdx = i end
+            end
+
+            for i, t in ipairs(incomingTabs) do
+                local txtTrans = isSidebarCollapsed and 1 or 0
+                local padLeft = isSidebarCollapsed and 0 or 40
+                
+                if t.IsDivider then
+                    local isFirstInMode = (i == firstIncomingIdx)
+                    local targetHeight = isSidebarCollapsed and 12 or 20
+                    if isFirstInMode and isSidebarCollapsed then targetHeight = 0 end
+                    
+                    t.Label.TextTransparency = 1
+                    t.Label.Visible = true
+                    TweenService:Create(t.Label, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                        TextTransparency = txtTrans,
+                        Size = UDim2.new(0, isSidebarCollapsed and 34 or (expandedSidebarWidth - 7), 0, targetHeight)
+                    }):Play()
+                    
+                    local line = t.Label:FindFirstChild("Line")
+                    if line then
+                        if isFirstInMode then
+                            TweenService:Create(line, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+                        else
+                            TweenService:Create(line, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { BackgroundTransparency = isSidebarCollapsed and 0 or 1 }):Play()
+                        end
+                    end
+                else
+                    local btn = t.TabButton
+                    btn.Size = UDim2.new(0, 0, 0, 34)
+                    btn.TextTransparency = 1
+                    btn.BackgroundTransparency = 1
+                    btn.Visible = true
+                    local ico = btn:FindFirstChild("iconImg")
+                    if ico then ico.ImageTransparency = 1 end
+                    
+                    local padding = btn:FindFirstChildOfClass("UIPadding")
+                    if padding then
+                        TweenService:Create(padding, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { PaddingLeft = UDim.new(0, padLeft) }):Play()
+                    end
+
+                    if not firstSection then firstSection = t end
+
+                    -- Phase 3: Animate in
+                    local bgTrans = (btn.Name == "sidebar2_selected") and 1 or 0.93
+                    local currentTargetWidth = isSidebarCollapsed and 34 or (expandedSidebarWidth - 7)
+                    TweenService:Create(btn, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(0, currentTargetWidth, 0, 34),
+                        TextTransparency = txtTrans,
+                        BackgroundTransparency = bgTrans
+                    }):Play()
+                    if ico then
+                        TweenService:Create(ico, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                            ImageTransparency = 0,
+                            Position = isSidebarCollapsed and UDim2.new(0.5, 0, 0.5, 0) or UDim2.new(0, -16, 0.5, 0)
+                        }):Play()
+                    end
+                end
+            end
+
+            -- Auto-select first tab
+            if firstSection then
+                firstSection:Select()
+                if highlight then
+                    TweenService:Create(highlight, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                        BackgroundTransparency = 0
+                    }):Play()
+                    
+                    local activeTab = nil
+                    for _, s in ipairs(sections) do
+                        if s.TextColor3 == Color3.fromRGB(255, 255, 255) then
+                            activeTab = s
+                            break
+                        end
+                    end
+                    if activeTab then
+                        local connection
+                        connection = RunService.RenderStepped:Connect(function()
+                            if activeTab and highlight then
+                                highlight.Position = UDim2.new(0, activeTab.AbsolutePosition.X - main.AbsolutePosition.X, 0, activeTab.AbsolutePosition.Y - main.AbsolutePosition.Y)
+                            else
+                                if connection then connection:Disconnect() end
+                            end
+                        end)
+                        task.delay(0.3, function()
+                            if connection then connection:Disconnect() end
+                        end)
+                    end
+                end
+            end
+            
+            task.delay(0.3, function()
+                tabSwapCooldown = false
+            end)
+        end)
+    end)
 
     local uc_20 = Instance.new("UICorner")
     uc_20.CornerRadius = UDim.new(1, 0)
@@ -639,12 +1083,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local title = Instance.new("TextLabel")
     title.Name = "title"
-    title.Parent = main
+    title.Parent = workarea
     title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     title.BackgroundTransparency = 1
     title.BorderSizePixel = 2
-    title.Position = UDim2.new(0, 281, 0, 20)
-    title.Size = UDim2.new(1, -340, 0, 30)
+    title.Position = UDim2.new(0, 16, 0, 16)
+    title.Size = UDim2.new(1, -32, 0, 30)
     title.Font = Enum.Font.GothamBold
     title.LineHeight = 1.180
     registerTheme(title, "TextColor3", Color3.fromRGB(15, 15, 20), Color3.fromRGB(240, 240, 245))
@@ -654,6 +1098,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local moonbtn = Instance.new("ImageButton")
     moonbtn.Name = "moonbtn"
+    applyHoverCursor(moonbtn)
     moonbtn.Parent = main
     moonbtn.Size = UDim2.new(0, 24, 0, 24)
     moonbtn.Position = UDim2.new(1, -40, 0, 16)
@@ -663,7 +1108,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local function toggleTheme()
         currentTheme = (currentTheme == "light") and "dark" or "light"
-        ConfigManager:SaveTheme(currentTheme)
+        ConfigManager:SaveUISettings(currentTheme, ConfigManager.DisableSplash, ConfigManager.AccentColor, ConfigManager.Rainbow)
         moonbtn.Image = getAsset(currentTheme == "light" and "Assets/blackmoon.png" or "Assets/whitemoon.png")
         for _, item in ipairs(themeElements) do
             pcall(function()
@@ -674,11 +1119,19 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 end
             end)
         end
+        local bgL = Color3.fromRGB(0, 0, 0)
+        local bgD = Color3.fromRGB(255, 255, 255)
+        local txtL = Color3.fromRGB(100, 100, 100)
+        local txtD = Color3.fromRGB(140, 140, 155)
         for _, v in next, sections do
+            v.BackgroundColor3 = (currentTheme == "light") and bgL or bgD
+            local ico = v:FindFirstChild("iconImg")
             if v.Name == "sidebar2_selected" then
                 v.TextColor3 = Color3.fromRGB(255, 255, 255)
+                if ico then ico.ImageColor3 = Color3.fromRGB(255, 255, 255) end
             else
-                v.TextColor3 = (currentTheme == "light") and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255)
+                v.TextColor3 = (currentTheme == "light") and txtL or txtD
+                if ico then ico.ImageColor3 = (currentTheme == "light") and txtL or txtD end
             end
         end
     end
@@ -737,6 +1190,36 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     setupResize(resizeCorner, "corner")
 
     UserInputService.InputChanged:Connect(function(input)
+
+        if sidebarResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local deltaX = input.Position.X - sidebarStartX
+            expandedSidebarWidth = math.clamp(sidebarStartWidth + deltaX, 150, 400)
+            
+            if not isSidebarCollapsed then
+                sidebar.Size = UDim2.new(0, expandedSidebarWidth, 1, -124)
+                sidebarResizer.Position = UDim2.new(0, 18 + expandedSidebarWidth - 4, 0, 106)
+                workarea.Position = UDim2.new(0, expandedSidebarWidth + 30, 0, 0)
+                workarea.Size = UDim2.new(1, -(expandedSidebarWidth + 30), 1, 0)
+                
+                for b, v in next, sections do
+                    v.Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)
+                end
+                for _, t in ipairs(mainTabs) do
+                    if t.IsDivider then t.Label.Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 20) else
+                        t.TabButton.Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)
+                    end
+                end
+                for _, t in ipairs(extraTabs) do
+                    if t.IsDivider then t.Label.Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 20) else
+                        t.TabButton.Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)
+                    end
+                end
+                local highlight = main:FindFirstChild("TabHighlight")
+                if highlight then highlight.Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34) end
+                local currentSearch = main:FindFirstChild("search")
+                if currentSearch then currentSearch.Size = UDim2.new(0, expandedSidebarWidth - 8, 0, 34) end
+            end
+        end
         if activeResize and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - resizeStartMouse
             local newWidth = main.Size.X.Offset
@@ -1029,6 +1512,23 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     customCursor.Visible = false
 
     local useCustomCursor = not isMob
+    
+    local customPointerAsset = getAsset("Assets/pointer.png")
+    for _, element in ipairs(hoverElements) do
+        element.MouseEnter:Connect(function()
+            if customCursor.Visible and customPointerAsset ~= "" then
+                customCursor.Image = customPointerAsset
+            end
+        end)
+        element.MouseLeave:Connect(function()
+            if customCursor.Visible and customCursorAsset ~= "" then
+                customCursor.Image = customCursorAsset
+            end
+        end)
+    end
+
+    local originalMouseIconEnabled = true
+    local originalMouseBehavior = Enum.MouseBehavior.Default
     local function updateCursor()
         if customCursorAsset ~= "" and useCustomCursor then
             customCursor.Image = customCursorAsset
@@ -1036,26 +1536,22 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 UserInputService.MouseIconEnabled = false
                 customCursor.Visible = true
             else
-                UserInputService.MouseIconEnabled = true
+                UserInputService.MouseIconEnabled = originalMouseIconEnabled
                 customCursor.Visible = false
             end
         else
-            UserInputService.MouseIconEnabled = true
+            UserInputService.MouseIconEnabled = originalMouseIconEnabled
             customCursor.Visible = false
         end
     end
     updateCursor()
 
     local cursorRenderName = "AppleLibCursorSync"
-    RunService:BindToRenderStep(cursorRenderName, Enum.RenderPriority.Last.Value, function()
+    RunService:BindToRenderStep(cursorRenderName, 2000, function() -- 2000 is late enough to override CoreGui
         if customCursor.Visible then
             local pos = UserInputService:GetMouseLocation()
-            customCursor.Position = UDim2.new(0, pos.X, 0, pos.Y)
+            customCursor.Position = UDim2.new(0, pos.X - 10, 0, pos.Y)
             UserInputService.MouseIconEnabled = false
-        end
-        if not scrgui.Parent then
-            UserInputService.MouseIconEnabled = true
-            RunService:UnbindFromRenderStep(cursorRenderName)
         end
     end)
 
@@ -1063,9 +1559,15 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     -- toggle ui visibility
     function window:ToggleVisible()
         if dbcooper then return end
+        if not visible then
+            originalMouseIconEnabled = UserInputService.MouseIconEnabled
+        end
         visible = not visible
         dbcooper = true
         isAnimatingVis = true
+        
+        modalUnlocker.Modal = visible
+        
         updateCursor()
         if visible then
             if blurEnabled then
@@ -1095,23 +1597,23 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     end
 
     local visibleKeyConn
-    if visiblekey then
-        minimize.MouseButton1Click:Connect(function()
-            window:ToggleVisible()
-        end)
+    local function rebindVisibleKey(newKey)
+        if visibleKeyConn then visibleKeyConn:Disconnect() end
+        visiblekey = newKey
         visibleKeyConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if input.KeyCode == visiblekey then
                 window:ToggleVisible()
             end
         end)
     end
-
-    function window:GreenButton(callback)
-        if _G.gbutton_123123 then _G.gbutton_123123:Disconnect() end
-        _G.gbutton_123123 = resize.MouseButton1Click:Connect(function()
-            callback()
+    if visiblekey then
+        minimize.MouseButton1Click:Connect(function()
+            window:ToggleVisible()
         end)
+        rebindVisibleKey(visiblekey)
     end
+
+
 
     local activeNotifs = {}
     local notifBaseY = isMob and 0.15 or 0.08
@@ -1119,25 +1621,20 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     -- temp notif
     function window:TempNotify(text1, text2, icon)
-        local function refreshPositions()
-            for i, data in ipairs(activeNotifs) do
-                local offset = (i - 1) * notifSpacing / workspace.CurrentCamera.ViewportSize.Y
-                local targetY = notifBaseY + offset
-                local targetX = isMob and -160 or -180
-                TweenService:Create(data.frame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
-                    Position = UDim2.new(1, targetX, targetY, 0)
-                }):Play()
+        for b,v in next, scrgui:GetChildren() do
+            if v.Name == "tempnotif" then 
+                -- Snap instantly to avoid X-axis tween overlap bugs when spammed
+                v.Position = v.Position + UDim2.new(0,0,0,130)
             end
         end
-
         local tempnotif = Instance.new("Frame")
         tempnotif.Name = "tempnotif"
         tempnotif.Parent = scrgui
         tempnotif.AnchorPoint = Vector2.new(0.5, 0.5)
         registerTheme(tempnotif, "BackgroundColor3", Color3.fromRGB(255, 255, 255), Color3.fromRGB(40, 40, 40))
         tempnotif.BackgroundTransparency = 0.150
-        tempnotif.Position = UDim2.new(1, 200, notifBaseY, 0)
-        tempnotif.Size = isMob and UDim2.new(0, 280, 0, 75) or UDim2.new(0, 320, 0, 90)
+        tempnotif.Position = UDim2.new(1, -250, 0.0794737339, 0)
+        tempnotif.Size = UDim2.new(0, 447, 0, 117)
         tempnotif.Visible = true
         tempnotif.ZIndex = 101
 
@@ -1150,13 +1647,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         t2.Parent = tempnotif
         t2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         t2.BackgroundTransparency = 1
-        t2.Position = UDim2.new(0, 65, 0, 34)
-        t2.Size = UDim2.new(1, -75, 0, 35)
+        t2.Position = UDim2.new(0.236927822, 0, 0.470085472, 0)
+        t2.Size = UDim2.new(0, 326, 0, 52)
         t2.ZIndex = 102
         t2.Font = Enum.Font.Gotham
         t2.Text = text2
         registerTheme(t2, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-        t2.TextSize = 13
+        t2.TextSize = 16
         t2.TextWrapped = true
         t2.TextXAlignment = Enum.TextXAlignment.Left
         t2.TextYAlignment = Enum.TextYAlignment.Top
@@ -1166,13 +1663,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         t1.Parent = tempnotif
         t1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         t1.BackgroundTransparency = 1
-        t1.Position = UDim2.new(0, 65, 0, 12)
-        t1.Size = UDim2.new(1, -75, 0, 20)
+        t1.Position = UDim2.new(0.234690696, 0, 0.193464488, 0)
+        t1.Size = UDim2.new(0, 327, 0, 25)
         t1.ZIndex = 102
         t1.Font = Enum.Font.GothamMedium
         t1.Text = text1
         registerTheme(t1, "TextColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
-        t1.TextSize = 16
+        t1.TextSize = 28
         t1.TextXAlignment = Enum.TextXAlignment.Left
 
         local ticon = Instance.new("ImageLabel")
@@ -1180,11 +1677,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         ticon.Parent = tempnotif
         ticon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         ticon.BackgroundTransparency = 1
-        ticon.Position = UDim2.new(0, 15, 0.5, -20)
-        ticon.Size = UDim2.new(0, 40, 0, 40)
+        ticon.Position = UDim2.new(0.0311112702, 0, 0.193464488, 0)
+        ticon.Size = UDim2.new(0, 71, 0, 71)
         ticon.ZIndex = 102
-        ticon.Image = icon
-        ticon.ImageColor3 = Color3.fromRGB(95, 95, 95)
+        ticon.Image = resolveIcon(icon)
+        registerTheme(ticon, "ImageColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
         ticon.ScaleType = Enum.ScaleType.Fit
 
         local tshadow = Instance.new("ImageLabel")
@@ -1199,62 +1696,50 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         tshadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
         tshadow.ImageTransparency = 0.400
         tshadow.TileSize = UDim2.new(0, 1, 0, 1)
-
-        local entry = { frame = tempnotif }
-        table.insert(activeNotifs, entry)
-        refreshPositions()
-
-        task.delay(4.5, function()
-            local exitPos = UDim2.new(1, 500, tempnotif.Position.Y.Scale, tempnotif.Position.Y.Offset)
-            TweenService:Create(tempnotif, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.In), {
-                Position = exitPos
-            }):Play()
-            task.delay(0.5, function()
-                for i, data in ipairs(activeNotifs) do
-                    if data == entry then
-                        table.remove(activeNotifs, i)
-                        break
-                    end
-                end
-                tempnotif:Destroy()
-                refreshPositions()
-            end)
-        end)
-    end
-
-
-    -- standard notif
-    function window:PromptKeybind(callback, elementName)
-        if notif.Visible == true or notif2.Visible == true then return "Already visible" end
-        isPromptingKeybind = true
-        keybindPromptCallback = callback
-        keybindPromptElementName = elementName
         
-        notifdarkness.Visible = true
-        keybindPromptFrame.Visible = true
+        -- Snap in exactly like original to prevent spam bugs
+        tempnotif.Position = UDim2.new(1, -250, 0.0794737339, 0)
+
+        -- Slide out animation after 4.5 seconds, then destroy at 5 seconds
+        task.delay(4.5, function()
+            if tempnotif and tempnotif.Parent then
+                TweenService:Create(tempnotif, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.In), {
+                    Position = UDim2.new(1, 250, tempnotif.Position.Y.Scale, tempnotif.Position.Y.Offset)
+                }):Play()
+                game:GetService("Debris"):AddItem(tempnotif, 0.5)
+            end
+        end)
     end
 
     function window:Notify(txt1, txt2, b1, icohn, callback)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
         notiftitle.Text = txt1
         notiftext.Text = txt2
-        notificon = icohn
-        notif.Size = UDim2.new(0, 240, 0, 280)
+        notificon.Image = resolveIcon(icohn)
+        if not notif:FindFirstChild("notifScale") then
+            local notifScale = Instance.new("UIScale")
+            notifScale.Name = "notifScale"
+            notifScale.Parent = notif
+        end
+        local notifScale = notif.notifScale
+        
+        notif.Size = UDim2.new(0, 304, 0, 362)
+        notifScale.Scale = 0.8
         notif.Position = UDim2.new(0.5, 0, 0.5, 40)
         notifdarkness.Visible = true
         notif.Visible = true
         notifbutton1.Text = b1
 
+        TweenService:Create(notifScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
         TweenService:Create(notif, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 304, 0, 362),
             Position = UDim2.new(0.5, 0, 0.5, 0)
         }):Play()
 
         con1 = notifbutton1.MouseButton1Click:Connect(function()
             if con1 then con1:Disconnect() end
             if callback then callback() end
+            TweenService:Create(notifScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0.8}):Play()
             TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-                Size = UDim2.new(0, 240, 0, 280),
                 Position = UDim2.new(0.5, 0, 0.5, 40)
             }):Play()
             task.delay(0.3, function()
@@ -1269,16 +1754,24 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
         notif2title.Text = txt1
         notif2text.Text = txt2
-        notif2icon = icohn
-        notif2.Size = UDim2.new(0, 240, 0, 280)
+        notif2icon.Image = resolveIcon(icohn)
+        if not notif2:FindFirstChild("notif2Scale") then
+            local notif2Scale = Instance.new("UIScale")
+            notif2Scale.Name = "notif2Scale"
+            notif2Scale.Parent = notif2
+        end
+        local notif2Scale = notif2.notif2Scale
+        
+        notif2.Size = UDim2.new(0, 304, 0, 362)
+        notif2Scale.Scale = 0.8
         notif2.Position = UDim2.new(0.5, 0, 0.5, 40)
         notif2darkness.Visible = true
         notif2.Visible = true
         notif2button1.Text = b1
         notif2button2.Text = b2
 
+        TweenService:Create(notif2Scale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
         TweenService:Create(notif2, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 304, 0, 362),
             Position = UDim2.new(0.5, 0, 0.5, 0)
         }):Play()
 
@@ -1286,8 +1779,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             if con1 then con1:Disconnect() end
             if con2 then con2:Disconnect() end
             if callback then callback() end
+            TweenService:Create(notif2Scale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0.8}):Play()
             TweenService:Create(notif2, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-                Size = UDim2.new(0, 240, 0, 280),
                 Position = UDim2.new(0.5, 0, 0.5, 40)
             }):Play()
             task.delay(0.3, function()
@@ -1299,8 +1792,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             if con1 then con1:Disconnect() end
             if con2 then con2:Disconnect() end
             if callback2 then callback2() end
+            TweenService:Create(notif2Scale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0.8}):Play()
             TweenService:Create(notif2, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-                Size = UDim2.new(0, 240, 0, 280),
                 Position = UDim2.new(0.5, 0, 0.5, 40)
             }):Play()
             task.delay(0.3, function()
@@ -1310,7 +1803,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end)
     end
 
-    function window:Divider(name)
+    function window:Divider(name, isExtra)
         local sidebardivider = Instance.new("TextLabel")
         sidebardivider.Name = "sidebardivider"
         sidebardivider.Parent = sidebar
@@ -1318,7 +1811,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sidebardivider.BackgroundTransparency = 1
         sidebardivider.BorderSizePixel = 2
         sidebardivider.Position = UDim2.new(0, 0, 0.00215982716, 0)
-        sidebardivider.Size = UDim2.new(0, 226, 0, 28)
+        sidebardivider.Size = UDim2.new(0, isSidebarCollapsed and 34 or (expandedSidebarWidth - 7), 0, 20)
         sidebardivider.Font = Enum.Font.GothamBold
         sidebardivider.Text = name
         registerTheme(sidebardivider, "TextColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(100, 100, 120))
@@ -1326,11 +1819,29 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sidebardivider.TextWrapped = true
         sidebardivider.TextXAlignment = Enum.TextXAlignment.Left
         sidebardivider.TextYAlignment = Enum.TextYAlignment.Bottom
+
+        local line = Instance.new("Frame")
+        line.Name = "Line"
+        line.Parent = sidebardivider
+        line.Size = UDim2.new(0, 30, 0, 2)
+        line.Position = UDim2.new(0.5, 0, 0.5, 0)
+        line.AnchorPoint = Vector2.new(0.5, 0.5)
+        line.BackgroundTransparency = 1
+        line.BorderSizePixel = 0
+        registerTheme(line, "BackgroundColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(100, 100, 120))
+
+        if isExtra then
+            table.insert(extraTabs, {IsDivider = true, Label = sidebardivider})
+            sidebardivider.Visible = false
+        else
+            table.insert(mainTabs, {IsDivider = true, Label = sidebardivider})
+        end
     end
 
     -- new section
-    function window:Section(name)
+    function window:Section(name, iconId, isExtra)
         local sidebar2 = Instance.new("TextButton")
+        sidebar2.ClipsDescendants = true
         sidebar2.Name = "sidebar2"
         sidebar2.Parent = sidebar
         local bgL = Color3.fromRGB(0, 0, 0)
@@ -1340,13 +1851,38 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         sidebar2.BackgroundColor3 = (currentTheme == "light") and bgL or bgD
         sidebar2.BackgroundTransparency = 0.93
-        sidebar2.Size = UDim2.new(0, 226, 0, 34)
+        sidebar2.Size = UDim2.new(0, isSidebarCollapsed and 34 or (expandedSidebarWidth - 7), 0, 34)
         sidebar2.ZIndex = 20
         sidebar2.AutoButtonColor = false
         sidebar2.Font = Enum.Font.GothamMedium
         sidebar2.Text = name
         sidebar2.TextColor3 = (currentTheme == "light") and txtL or txtD
         sidebar2.TextSize = 15
+
+        if iconId then
+            sidebar2.TextXAlignment = Enum.TextXAlignment.Left
+            local uipadding = Instance.new("UIPadding")
+            uipadding.PaddingLeft = UDim.new(0, 40)
+            uipadding.Parent = sidebar2
+
+            local iconImg = Instance.new("ImageLabel")
+            iconImg.Name = "iconImg"
+            iconImg.Size = UDim2.new(0, 18, 0, 18)
+            iconImg.Position = UDim2.new(0, -16, 0.5, 0)
+            iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
+            iconImg.BackgroundTransparency = 1
+            iconImg.Parent = sidebar2
+            iconImg.ZIndex = 20
+            iconImg.Active = false
+            if iconMap[iconId] then
+                iconImg.Image = iconMap[iconId]
+            elseif string.find(iconId, "rbxassetid://") then
+                iconImg.Image = iconId
+            else
+                iconImg.Image = "rbxassetid://10734909540" -- default to package
+            end
+            registerTheme(iconImg, "ImageColor3", txtL, txtD)
+        end
 
         local uc_10 = Instance.new("UICorner")
         uc_10.CornerRadius = UDim.new(0, 9)
@@ -1383,6 +1919,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         table.insert(workareas, workareamain)
 
         local sec = {}
+        sec.SearchableText = {}
+        sec.ElementsList = {}
+        sec.TabButton = sidebar2
 
         function sec:Select()
             if workareamain.Visible then return end
@@ -1392,20 +1931,30 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 v.BackgroundTransparency = 0.93
                 v.TextColor3 = (currentTheme == "light") and txtL or txtD
                 v.Name = "sidebar2"
+                local ico = v:FindFirstChild("iconImg")
+                if ico then
+                    ico.ImageColor3 = (currentTheme == "light") and txtL or txtD
+                end
             end
             sidebar2.BackgroundTransparency = 1
             sidebar2.TextColor3 = Color3.fromRGB(255, 255, 255)
             sidebar2.Name = "sidebar2_selected"
+            local myIco = sidebar2:FindFirstChild("iconImg")
+            if myIco then
+                myIco.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            end
 
             local isNewHighlight = false
             local highlight = main:FindFirstChild("TabHighlight")
+            if highlight then highlight.Visible = true end
             if not highlight then
                 isNewHighlight = true
                 highlight = Instance.new("Frame")
                 highlight.Name = "TabHighlight"
                 highlight.Parent = main
                 highlight.BackgroundColor3 = currentAccentColor
-                highlight.Size = UDim2.new(0, 226, 0, 37)
+                local currentHighlightWidth = isSidebarCollapsed and 34 or (expandedSidebarWidth - 7)
+                highlight.Size = UDim2.new(0, currentHighlightWidth, 0, 34)
                 highlight.ZIndex = 1
                 local uc = Instance.new("UICorner", highlight)
                 uc.CornerRadius = UDim.new(0, 9)
@@ -1440,7 +1989,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             if isNewHighlight then
                 highlight.Position = UDim2.new(0, targetX, 0, targetY)
             else
-                TweenService:Create(highlight, TweenInfo.new(0.15, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+                TweenService:Create(highlight, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
                     Position = UDim2.new(0, targetX, 0, targetY)
                 }):Play()
             end
@@ -1466,6 +2015,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local section = Instance.new("TextLabel")
             section.Name = "section"
             section.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = section })
             section.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             section.BackgroundTransparency = 1
             section.BorderSizePixel = 2
@@ -1482,6 +2032,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- btn
         function sec:Button(name, callback)
+            table.insert(sec.SearchableText, string.upper(name))
             local flag = name
             registeredElements[flag] = callback
             
@@ -1489,6 +2040,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             button.Name = "button"
             button.Text = name
             button.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = button })
             button.Size = UDim2.new(1, 0, 0, 37)
             button.ZIndex = 20
             button.Font = Enum.Font.GothamBold
@@ -1539,9 +2091,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
 
         function sec:Label(name)
+            table.insert(sec.SearchableText, string.upper(name))
             local label = Instance.new("TextLabel")
             label.Name = "label"
             label.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = label })
             label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             label.BackgroundTransparency = 1
             label.BorderSizePixel = 2
@@ -1555,12 +2109,14 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- switch
         function sec:Switch(name, defaultmode, callback, flag)
+            table.insert(sec.SearchableText, string.upper(name))
             flag = flag or name
-            local mode = defaultmode
+            local mode = (ConfigManager.Elements[flag] ~= nil and ConfigManager.Elements[flag].Value ~= nil) and ConfigManager.Elements[flag].Value or defaultmode
             table.insert(cleanupToggles, { default = defaultmode, callback = callback })
             local toggleswitch = Instance.new("Frame")
             toggleswitch.Name = "toggleswitch"
             toggleswitch.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = toggleswitch })
             toggleswitch.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             toggleswitch.BackgroundTransparency = 1
             toggleswitch.BorderSizePixel = 0
@@ -1620,6 +2176,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local function toggle()
                 mode = not mode
                 if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = mode end
+                if type(flag) == "string" and string.find(flag, "^Settings_") then ConfigManager:SaveUISettings() end
                 if callback then callback(mode) end
                 if mode then
                     TextButton:TweenPosition(UDim2.new(0, 29, 0, 1), "In", "Sine", 0.1, true)
@@ -1657,10 +2214,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- text box
         function sec:TextField(name, placeholder, callback, flag)
+            table.insert(sec.SearchableText, string.upper(name))
             flag = flag or name
             local textfield = Instance.new("Frame")
             textfield.Name = "textfield"
             textfield.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = textfield })
             textfield.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             textfield.BackgroundTransparency = 1
             textfield.BorderSizePixel = 0
@@ -1719,10 +2278,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- slider
         function sec:Slider(name, min, max, default, callback, flag)
+            table.insert(sec.SearchableText, string.upper(name))
             flag = flag or name
+            default = (ConfigManager.Elements[flag] ~= nil and ConfigManager.Elements[flag].Value ~= nil) and ConfigManager.Elements[flag].Value or default
             local sliderrow = Instance.new("Frame")
             sliderrow.Name = "sliderrow"
             sliderrow.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = sliderrow })
             sliderrow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             sliderrow.BackgroundTransparency = 1
             sliderrow.BorderSizePixel = 0
@@ -1795,6 +2357,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local function setValue(v)
                 currentValue = math.clamp(math.round(v), min, max)
                 if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
+                if type(flag) == "string" and string.find(flag, "^Settings_") then ConfigManager:SaveUISettings() end
                 local scale = (currentValue - min) / (max - min)
                 fill.Size = UDim2.new(scale, 0, 1, 0)
                 thumb.Position = UDim2.new(scale, -7, 0.5, -7)
@@ -1843,10 +2406,16 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- drop list
         function sec:Dropdown(name, options, default, callback, flag)
+            table.insert(sec.SearchableText, string.upper(name))
+            if type(options) == 'table' then for _, o in ipairs(options) do table.insert(sec.SearchableText, string.upper(tostring(o))) end end
             flag = flag or name
+            default = (ConfigManager.Elements[flag] ~= nil and ConfigManager.Elements[flag].Value ~= nil) and ConfigManager.Elements[flag].Value or default
             local droprow = Instance.new("Frame")
             droprow.Name = "droprow"
             droprow.Parent = workareamain
+            local searchStr = string.upper(name)
+            if type(options) == "table" then for _, o in ipairs(options) do searchStr = searchStr .. " " .. string.upper(tostring(o)) end end
+            table.insert(sec.ElementsList, { text = searchStr, gui = droprow })
             droprow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             droprow.BackgroundTransparency = 1
             droprow.BorderSizePixel = 0
@@ -1963,6 +2532,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     currentValue = options[1]
                     droplabel.Text = currentValue
                     if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
+                if type(flag) == "string" and string.find(flag, "^Settings_") then ConfigManager:SaveUISettings() end
                     if callback then callback(currentValue) end
                 end
                 for _, opt in ipairs(options) do
@@ -1995,6 +2565,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                         TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
                         currentValue = opt
                         if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
+                if type(flag) == "string" and string.find(flag, "^Settings_") then ConfigManager:SaveUISettings() end
                         droplabel.Text = opt
                         closeList()
                         if callback then callback(currentValue) end
@@ -2033,6 +2604,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     TweenService:Create(optbtn, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
                     currentValue = opt
                     if ConfigManager.Elements[flag] then ConfigManager.Elements[flag].Value = currentValue end
+                if type(flag) == "string" and string.find(flag, "^Settings_") then ConfigManager:SaveUISettings() end
                     droplabel.Text = opt
                     closeList()
                     if callback then callback(currentValue) end
@@ -2068,11 +2640,16 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- multi drop list
         function sec:MultiDropdown(name, options, defaultOptions, callback, flag)
+            table.insert(sec.SearchableText, string.upper(name))
+            if type(options) == 'table' then for _, o in ipairs(options) do table.insert(sec.SearchableText, string.upper(tostring(o))) end end
             flag = flag or name
             defaultOptions = defaultOptions or {}
             local droprow = Instance.new("Frame")
             droprow.Name = "droprow"
             droprow.Parent = workareamain
+            local searchStr = string.upper(name)
+            if type(options) == "table" then for _, o in ipairs(options) do searchStr = searchStr .. " " .. string.upper(tostring(o)) end end
+            table.insert(sec.ElementsList, { text = searchStr, gui = droprow })
             droprow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             droprow.BackgroundTransparency = 1
             droprow.BorderSizePixel = 0
@@ -2291,10 +2868,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- clr picker
         function sec:ColorPicker(name, default, callback, flag)
+            table.insert(sec.SearchableText, string.upper(name))
             flag = flag or name
             local cprow = Instance.new("Frame")
             cprow.Name = "cprow"
             cprow.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = cprow })
             cprow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             cprow.BackgroundTransparency = 1
             cprow.BorderSizePixel = 0
@@ -2538,10 +3117,12 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
         -- keybind
         function sec:Keybind(name, default, callback, flag)
+            table.insert(sec.SearchableText, string.upper(name))
             flag = flag or name
             local kbrow = Instance.new("Frame")
             kbrow.Name = "kbrow"
             kbrow.Parent = workareamain
+            table.insert(sec.ElementsList, { text = string.upper(name), gui = kbrow })
             kbrow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             kbrow.BackgroundTransparency = 1
             kbrow.BorderSizePixel = 0
@@ -2560,6 +3141,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             kblabel.TextXAlignment = Enum.TextXAlignment.Left
 
             local kbbtn = Instance.new("TextButton")
+            applyHoverCursor(kbbtn)
             kbbtn.Name = "kbbtn"
             kbbtn.Parent = kbrow
             registerTheme(kbbtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
@@ -2632,6 +3214,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local para = Instance.new("TextLabel")
             para.Name = "para"
             para.Parent = workareamain
+            local searchStr = string.upper(title) .. " " .. string.upper(content)
+            table.insert(sec.ElementsList, { text = searchStr, gui = para })
             para.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             para.BackgroundTransparency = 1
             para.BorderSizePixel = 0
@@ -2672,13 +3256,74 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             sec:Select()
         end)
 
+        if isExtra then
+            table.insert(extraTabs, sec)
+            sidebar2.Visible = false
+        else
+            table.insert(mainTabs, sec)
+        end
+
         return sec
     end
 
     
     -- settings
     local function CreateSettingsTab()
-        local setsec = window:Section("⚙️ Settings")
+        local setsec = window:Section("Settings", "rbxassetid://10734950309", true)
+        setsec:Divider("UI Settings")
+        
+        setsec:Keybind("Menu Bind", visiblekey or Enum.KeyCode.LeftControl, function()
+            -- this fires the menu toggle when you press the bind
+            window:ToggleVisible()
+        end, "Settings_MenuBind")
+        -- override the keybind element's fire so it instead rebinds the key
+        do
+            local mbFlag = "Settings_MenuBind"
+            local origEl = ConfigManager.Elements[mbFlag]
+            if origEl then
+                -- watch for value changes to rebind the key
+                task.spawn(function()
+                    local lastVal = origEl.Value
+                    while true do
+                        task.wait(0.2)
+                        if not origEl then break end
+                        local v = origEl.Value
+                        if v and v ~= lastVal then
+                            lastVal = v
+                            local kc = Enum.KeyCode[v]
+                            if kc then
+                                rebindVisibleKey(kc)
+                                -- save to script folder
+                                local bindPath = lib.FolderName .. "/menu_bind.txt"
+                                if makefolder and not isfolder(lib.FolderName) then makefolder(lib.FolderName) end
+                                pcall(writefile, bindPath, v)
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+
+        setsec:Switch("Keybinds Window", false, function(v)
+            keybindsWindowFrame.Visible = v
+            if blurEnabled then
+                if v then
+                    blur:BindFrame(keybindsWindowFrame, {
+                        Transparency = 0.98,
+                        Color = Color3.fromRGB(255, 255, 255)
+                    })
+                else
+                    if blur:HasBinding(keybindsWindowFrame) then
+                        blur:UnbindFrame(keybindsWindowFrame)
+                    end
+                end
+            end
+        end, "Settings_KeybindsWindow")
+
+        setsec:Switch("Disable Splash Screen", ConfigManager.DisableSplash or false, function(v)
+            ConfigManager.DisableSplash = v; ConfigManager:SaveUISettings()
+        end)
+        
         setsec:Divider("Config Manager")
         
         local configsList = ConfigManager:GetConfigs()
@@ -2743,13 +3388,14 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         
 
         
-        setsec:Switch("Custom Crosshair", true, function(v)
+        setsec:Switch("Custom Crosshair", false, function(v)
             useCustomCursor = v
             updateCursor()
         end, "Settings_Crosshair")
 
         setsec:Slider("UI Transparency", 0, 100, 15, function(v)
             main.BackgroundTransparency = v / 100
+            keybindsWindowFrame.BackgroundTransparency = v / 100
         end, "Settings_UITransparency")
         
         local function matchColor(c1, c2)
@@ -2778,12 +3424,19 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             end
         end
 
-        setsec:ColorPicker("Accent Color", Color3.fromRGB(21, 103, 251), function(c)
+        setsec:ColorPicker("Accent Color", ConfigManager.AccentColor or Color3.fromRGB(21, 103, 251), function(c)
+            ConfigManager.AccentColor = c
+            ConfigManager:SaveUISettings()
             applyAccent(c)
         end, "Settings_AccentColor")
 
         local rainbowConnection
-        setsec:Switch("Rainbow Accent", false, function(v)
+        if ConfigManager.AccentColor then
+            applyAccent(ConfigManager.AccentColor)
+        end
+        setsec:Switch("Rainbow Accent", ConfigManager.Rainbow or false, function(v)
+            ConfigManager.Rainbow = v
+            ConfigManager:SaveUISettings()
             if v then
                 local hue = 0
                 rainbowConnection = RunService.RenderStepped:Connect(function(dt)
@@ -2809,16 +3462,28 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             errorCatcherEnabled = v
         end, "Settings_ErrorCatcher")
 
-        setsec:Switch("Blur Background", true, function(v)
+        setsec:Switch("Blur Background", false, function(v)
             blurEnabled = v
-            if v and visible then
-                blur:BindFrame(blurFrame, {
-                    Transparency = 0.98,
-                    Color = Color3.fromRGB(255, 255, 255)
-                })
+            if v then
+                -- Only bind if it's currently rendered on-screen, otherwise it's handled by ToggleVisible/init
+                if visible and main.Position.Y.Scale < 1 then
+                    blur:BindFrame(blurFrame, {
+                        Transparency = 0.98,
+                        Color = Color3.fromRGB(255, 255, 255)
+                    })
+                    if keybindsWindowFrame.Visible then
+                        blur:BindFrame(keybindsWindowFrame, {
+                            Transparency = 0.98,
+                            Color = Color3.fromRGB(255, 255, 255)
+                        })
+                    end
+                end
             else
                 if blur:HasBinding(blurFrame) then
                     blur:UnbindFrame(blurFrame)
+                end
+                if blur:HasBinding(keybindsWindowFrame) then
+                    blur:UnbindFrame(keybindsWindowFrame)
                 end
             end
         end, "Settings_BlurBackground")
@@ -2830,7 +3495,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     
     -- credits
     local function CreateCreditsTab()
-        local credSec = window:Section("⭐ Credits")
+        local credSec = window:Section("Credits", "rbxassetid://10747373426", true)
         credSec:Divider("Modified AppleLibrary")
         
         local container = credSec:GetContainer()
@@ -2924,9 +3589,84 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     
     local keybindSec = nil
     local function CreateKeybindsTab()
-        keybindSec = window:Section("⌨️ Keybinds")
+        keybindSec = window:Section("Keybinds", "rbxassetid://10723416765", true)
         
         refreshKeybindsUI = function()
+
+            for _, child in ipairs(kb_container:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+            end
+            
+            for index, bindInfo in ipairs(activeKeybindData) do
+                local row = Instance.new("Frame")
+                row.Parent = kb_container
+                row.BackgroundTransparency = 1
+                row.Size = UDim2.new(1, 0, 0, 20)
+
+                local isToggle = ConfigManager.Elements[bindInfo.Name] and type(ConfigManager.Elements[bindInfo.Name].Value) == "boolean"
+
+                if isToggle then
+                    -- Tiny Toggle UI indicator on the far left
+                    local tglFrame = Instance.new("Frame")
+                    tglFrame.Parent = row
+                    tglFrame.ZIndex = 20
+                    tglFrame.Position = UDim2.new(0, 15, 0.5, -6)
+                    tglFrame.Size = UDim2.new(0, 24, 0, 12)
+                    tglFrame.BackgroundColor3 = (currentTheme == "light") and Color3.fromRGB(216, 216, 216) or Color3.fromRGB(60, 60, 60)
+                    
+                    local uc_tgl = Instance.new("UICorner")
+                    uc_tgl.CornerRadius = UDim.new(5, 0)
+                    uc_tgl.Parent = tglFrame
+                    
+                    local tglBtn = Instance.new("Frame")
+                    tglBtn.Parent = tglFrame
+                    tglBtn.ZIndex = 21
+                    tglBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    tglBtn.Size = UDim2.new(0, 10, 0, 10)
+                    tglBtn.Position = UDim2.new(0, 1, 0, 1)
+                    
+                    local uc_tglb = Instance.new("UICorner")
+                    uc_tglb.CornerRadius = UDim.new(5, 0)
+                    uc_tglb.Parent = tglBtn
+                    
+                    task.spawn(function()
+                        while tglFrame.Parent do
+                            local state = ConfigManager.Elements[bindInfo.Name].Value
+                            if state then
+                                tglBtn.Position = UDim2.new(0, 13, 0, 1)
+                                tglFrame.BackgroundColor3 = currentAccentColor
+                            else
+                                tglBtn.Position = UDim2.new(0, 1, 0, 1)
+                                tglFrame.BackgroundColor3 = (currentTheme == "light") and Color3.fromRGB(216, 216, 216) or Color3.fromRGB(60, 60, 60)
+                            end
+                            task.wait(0.1)
+                        end
+                    end)
+                end
+
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Parent = row
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Position = UDim2.new(0, isToggle and 45 or 15, 0, 0)
+                nameLabel.Size = UDim2.new(0.5, isToggle and -45 or -15, 1, 0)
+                nameLabel.Font = Enum.Font.Gotham
+                nameLabel.Text = bindInfo.Name
+                nameLabel.TextColor3 = (currentTheme == "light") and Color3.fromRGB(100, 100, 100) or Color3.fromRGB(140, 140, 155)
+                nameLabel.TextSize = 13
+                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+                local keyLabel = Instance.new("TextLabel")
+                keyLabel.Parent = row
+                keyLabel.BackgroundTransparency = 1
+                keyLabel.Position = UDim2.new(0.5, 0, 0, 0)
+                keyLabel.Size = UDim2.new(0.5, -15, 1, 0)
+                keyLabel.Font = Enum.Font.GothamBold
+                keyLabel.Text = "[" .. bindInfo.Key .. "]"
+                keyLabel.TextColor3 = currentAccentColor
+                keyLabel.TextSize = 13
+                keyLabel.TextXAlignment = Enum.TextXAlignment.Right
+            end
+
             local container = keybindSec:GetContainer()
             for _, child in ipairs(container:GetChildren()) do
                 if child.Name == "kbrow" or child.Name == "label" then
@@ -3035,6 +3775,123 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     CreateKeybindsTab()
 
 
+    collapseBtn.MouseButton1Click:Connect(function()
+        if collapseCooldown then return end
+        collapseCooldown = true
+        isSidebarCollapsed = not isSidebarCollapsed
+
+        local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        local rot = isSidebarCollapsed and 180 or 0
+        TweenService:Create(collapseBtn, tweenInfo, { Rotation = rot }):Play()
+
+        local sideWidth = isSidebarCollapsed and 40 or expandedSidebarWidth
+        local workPosX = isSidebarCollapsed and 70 or (expandedSidebarWidth + 30)
+        
+        TweenService:Create(sidebar, tweenInfo, { Size = UDim2.new(0, sideWidth, 1, -124) }):Play()
+        TweenService:Create(workarea, tweenInfo, {
+            Position = UDim2.new(0, workPosX, 0, 0),
+            Size = UDim2.new(1, -workPosX, 1, 0)
+        }):Play()
+
+        local searchWidth = isSidebarCollapsed and 34 or (expandedSidebarWidth - 8)
+        TweenService:Create(search, tweenInfo, { Size = UDim2.new(0, searchWidth, 0, 34) }):Play()
+        TweenService:Create(searchtextbox, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+            TextTransparency = isSidebarCollapsed and 1 or 0
+        }):Play()
+        
+        local sIconPos = isSidebarCollapsed and UDim2.new(0.5, -12, 0.5, -10) or UDim2.new(0.038, -2, 0.139, 2)
+        TweenService:Create(searchicon, tweenInfo, { Position = sIconPos }):Play()
+
+        local allTabs = {}
+        for _, t in ipairs(mainTabs) do table.insert(allTabs, t) end
+        for _, t in ipairs(extraTabs) do table.insert(allTabs, t) end
+
+        local firstMainIdx = nil
+        local firstExtraIdx = nil
+        for i, t in ipairs(mainTabs) do
+            if t.IsDivider and not firstMainIdx then firstMainIdx = i end
+        end
+        for i, t in ipairs(extraTabs) do
+            if t.IsDivider and not firstExtraIdx then firstExtraIdx = i end
+        end
+
+        local txtTrans = isSidebarCollapsed and 1 or 0
+        local padLeft = isSidebarCollapsed and 0 or 40
+        local highlightWidth = isSidebarCollapsed and 34 or (expandedSidebarWidth - 7)
+        local targetIconPos = isSidebarCollapsed and UDim2.new(0.5, 0, 0.5, 0) or UDim2.new(0, -16, 0.5, 0)
+
+        local highlight = main:FindFirstChild("TabHighlight")
+        if highlight then
+            TweenService:Create(highlight, tweenInfo, { Size = UDim2.new(0, highlightWidth, 0, 34) }):Play()
+        end
+
+        for i, t in ipairs(allTabs) do
+            local isFirstMain = firstMainIdx and (t == mainTabs[firstMainIdx]) or false
+            local isFirstExtra = firstExtraIdx and (t == extraTabs[firstExtraIdx]) or false
+            
+            if t.IsDivider then
+                local isFirstInMode = (isFirstMain and not isExtraMode) or (isFirstExtra and isExtraMode)
+                local targetHeight = isSidebarCollapsed and 12 or 20
+                if isFirstInMode and isSidebarCollapsed then
+                    targetHeight = 0 -- Eliminate top gap!
+                end
+                TweenService:Create(t.Label, tweenInfo, {
+                    TextTransparency = txtTrans,
+                    Size = UDim2.new(0, highlightWidth, 0, targetHeight)
+                }):Play()
+                
+                local line = t.Label:FindFirstChild("Line")
+                if line then
+                    if (isFirstMain and not isExtraMode) or (isFirstExtra and isExtraMode) then
+                        -- never show line for the top divider of the current mode
+                        TweenService:Create(line, tweenInfo, { BackgroundTransparency = 1 }):Play()
+                    else
+                        TweenService:Create(line, tweenInfo, { BackgroundTransparency = isSidebarCollapsed and 0 or 1 }):Play()
+                    end
+                end
+            else
+                local btn = t.TabButton
+                local padding = btn:FindFirstChildOfClass("UIPadding")
+                if padding then
+                    TweenService:Create(padding, tweenInfo, { PaddingLeft = UDim.new(0, padLeft) }):Play()
+                end
+                TweenService:Create(btn, tweenInfo, {
+                    TextTransparency = txtTrans,
+                    Size = UDim2.new(0, highlightWidth, 0, 34)
+                }):Play()
+                
+                local ico = btn:FindFirstChild("iconImg")
+                if ico then
+                    TweenService:Create(ico, tweenInfo, { Position = targetIconPos }):Play()
+                end
+            end
+        end
+
+        -- Retrigger sec:Select active TabHighlight positional sync so it bounces cleanly
+        local activeTab = nil
+        for _, s in ipairs(sections) do
+            if s.TextColor3 == Color3.fromRGB(255, 255, 255) then
+                activeTab = s
+                break
+            end
+        end
+        if activeTab and highlight then
+            local connection
+            connection = RunService.RenderStepped:Connect(function()
+                if activeTab and highlight then
+                    highlight.Position = UDim2.new(0, activeTab.AbsolutePosition.X - main.AbsolutePosition.X, 0, activeTab.AbsolutePosition.Y - main.AbsolutePosition.Y)
+                else
+                    if connection then connection:Disconnect() end
+                end
+            end)
+            task.delay(0.4, function()
+                if connection then connection:Disconnect() end
+            end)
+        end
+
+        task.delay(0.4, function() collapseCooldown = false end)
+    end)
+
     local autoloadConfig = ConfigManager:GetAutoLoad()
     if autoloadConfig then
         task.spawn(function()
@@ -3053,7 +3910,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 seenErrors[errMsg] = true
                 task.spawn(function()
                     task.wait(0.5)
-                    window:TempNotify("⚠️ Script Error", errMsg, "rbxassetid://12608259004")
+                    window:Notify2("Script Error", errMsg, "Copy", "OK", "rbxassetid://12608259004", function()
+                        if setclipboard then setclipboard(errMsg .. "\n" .. tostring(trace)) end
+                    end, function() end)
                 end)
             end
         end

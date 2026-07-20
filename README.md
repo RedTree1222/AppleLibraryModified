@@ -1,117 +1,123 @@
-# Apple Library
-UI Library in the style of Apple's MacOS and iPadOS
+# apple library
+ui library that looks like apple's macos and ipados.
 
-## Software requirements
-Requires a Roblox utility with `gethui()` or `syn.protect_gui` function. Tested on Potassium and Delta.
+## what you need
+you need an executor with `gethui()` or `syn.protect_gui`. tested on potassium and delta.
 
-
-## How to use?
-- Load the UI Library from GitHub repository.
+## how to use
+load it directly from github:
 ```lua
 local library = loadstring(game:HttpGet("https://github.com/RedTree1222/AppleLibraryModified/blob/main/main.lua?raw=true"))()
 ```
-- Create a window.
-```lua
-local window = library:init("Titlebar", true, Enum.KeyCode.RightShift, true)
-```
-- Now you can add menus, elements, dividers, etc.
-- A [template](/example.lua) is given if you want to see how elements, menus, etc are done.
 
-# Apple Library: Documentation
-## Creating window
-- Window: It holds everything except temporary notifications.
+make a window:
+```lua
+local window = library:init("title text", true, Enum.KeyCode.LeftControl, true)
+```
+
+check out the [example](example_test.lua) if you want to see everything in action.
+
+# docs
+## window stuff
+holds everything.
 ```lua
 local window = library:init(titleText: string, splash: boolean, showHideKeybind: KeyCode, deletePreviousUI: boolean)
 ```
-## Notifications
-- Temporary Notification: Appears on top-right corner. Has no buttons but has one icon. Deletes after few seconds.
+
+## notifications
+- temp notify: pops up top-right, no buttons, leaves on its own.
 ```lua
 window:TempNotify(titleText: string, paragraphText: string, icon: string)
 ```
-- Notification 1: Has one button and one icon. Appears over window.
+- notify 1: one button, pops up over the window.
 ```lua
 window:Notify(titleText: string, paragraphText: string, button1Text: string, icon: string)
 ```
-- Notification 2 Has two buttons and one icon. Appears over window.
+- notify 2: two buttons, pops up over window.
 ```lua
 window:Notify2(titleText: string, paragraphText: string, button1Text: string, button2Text: string, icon: string)
 ```
-## Sidebar menus and dividers
-- Section Divider: Simple text label to divide sections in sidebar.
+
+## sidebar
+- divider: just text to split things in the sidebar.
 ```lua
- window:Divider(text: string)
+window:Divider(text: string)
 ```
-- Section: Contains many elements. Returns a table so make sure this is a variable.
-```lua
-local section = window:Section(text: string)
-```
-## Section elements
-- Divider: Similar to Section Divider.
+- section/tab: holds your elements. returns a table.
+  you can pass a second arg for the icon. The library comes with 7 built-in Lucide icons:
+  `"home"`, `"bell"`, `"settings"`, `"keyboard"`, `"users"`, `"package"`, `"refresh-ccw"`
+  
+  If you want to use a different icon, you can pass ANY direct Roblox asset ID instead!
+  ```lua
+  local section = window:Section(text: string, icon: string)
+  -- Example using built-in:
+  local sec1 = window:Section("Main", "home")
+  -- Example using custom asset ID:
+  local sec2 = window:Section("Custom", "rbxassetid://123456789")
+  ```
+
+## elements
+- divider: splits elements.
 ```lua
 section:Divider(text: string)
 ```
-- Label: Texts you can use for notes or further information.
+- label: just text for notes.
 ```lua
 section:Label(text: string)
 ```
-- Button: Executes callback when clicked.
+- paragraph: bigger text block.
+```lua
+section:Paragraph(title: string, content: string)
+```
+- button: clicks and does stuff.
 ```lua
 section:Button(text: string, callback: function)
 ```
-- Switch: Toggle switch that executes callback with boolean parameter
+- switch: on/off toggle.
 ```lua
 section:Switch(text: string, callback: function)
 ```
-- Text Field: Textbox which executes callback when it loses focus.
+- text field: type stuff in.
 ```lua
 section:TextField(text: string, placeholderText: string, callback: function)
 ```
-- Slider: Interactive slider to select a number between a minimum and maximum value.
+- slider: slide to pick a number.
 ```lua
 section:Slider(text: string, min: number, max: number, default: number, callback: function)
 ```
-- Dropdown: Clickable dropdown menu to select a single option from a list.
+- dropdown: pick one thing from a list.
 ```lua
 section:Dropdown(text: string, options: table, default: string, callback: function)
 ```
-- Multi Dropdown: Clickable dropdown menu to select multiple options from a list.
+- multi dropdown: pick lots of things from a list.
 ```lua
 section:MultiDropdown(text: string, options: table, defaultOptions: table, callback: function)
 ```
-- Colorpicker: An interactive color wheel to select a Color3 value.
+- colorpicker: pick a color.
 ```lua
 section:Colorpicker(text: string, default: Color3, callback: function)
 ```
-- Keybind: A button that listens for a key press to assign a new KeyCode.
+- keybind: press a key to set it.
 ```lua
 section:Keybind(text: string, default: KeyCode, callback: function)
 ```
 
-## Miscellanous
-- Toggle Visibility: Hides/Shows window.
+## extra stuff
+- hide/show:
 ```lua
 window:ToggleVisible()
 ```
-- Green Button: Sets the callback of the green traffic light button.
-```lua
-window:GreenButton(callback: function)
-```
+- extra mode: click the green button top left to swap to your settings/credits.
+- collapse: click the bottom left button to shrink the sidebar to just icons (exactly like obsidian).
+- custom cursor: uses obsidian style hand pointer when hovering over things. you can disable this in the settings tab.
 
-# Apple Library: Images
-
+# images
 ![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075132.png)
-
-### Window
+### window
 ![image](https://user-images.githubusercontent.com/82454201/221863995-7f86524a-c4ea-4123-8978-d57a99421b7c.png)
-
-### Splash
+### splash
 ![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075116.png)
-
-### Temporary Notification
+### temp notif
 ![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075056.png)
 
-### Notification 1
-![image](https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/main/Assets/Screenshot%202026-07-18%20075104.png)
-
-### Notification 2
-# Any inquiries? Contact me on Discord: external.py
+got questions? dm me on discord: external.py

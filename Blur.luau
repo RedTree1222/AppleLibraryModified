@@ -122,7 +122,7 @@ function Module:BindFrame(Frame, Properties)
 	local Parents = {}
 	do
 		local function Add(Child)
-			if Child:IsA("GuiObject") then
+			if Child and pcall(function() return Child:IsA("GuiObject") end) and Child:IsA("GuiObject") then
 				Parents[#Parents + 1] = Child
 				Add(Child.Parent)
 			end
@@ -131,6 +131,10 @@ function Module:BindFrame(Frame, Properties)
 	end
 
 	local function UpdateOrientation(FetchProps)
+		if not Frame or not Frame.Parent then
+			Module:UnbindFrame(Frame)
+			return
+		end
 		local ZIndex = 1 - 0.05 * Frame.ZIndex
 		local Tl, Br = Frame.AbsolutePosition, Frame.AbsolutePosition + Frame.AbsoluteSize
 		local Tr, Bl = Vector2.new(Br.X, Tl.Y), Vector2.new(Tl.X, Br.Y)

@@ -1,77 +1,60 @@
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/refs/heads/main/main.lua"))()
-
-library.FolderName = "Example"
-library.ButtonStyle = "Modern" -- no variants yet
+local library = loadstring(readfile("AppleLibraryModified/main.lua"))()
 
 local window = library:init("Example", true, Enum.KeyCode.LeftControl, true)
 
-window:Divider("Navigation")
+window:Divider("Main Tabs")
 
-local sectionA = window:Section("Elements")
+-- Main Section
+local sec = window:Section("Main Section", "home")
 
-sectionA:Divider("Basic")
+sec:Divider("Elements")
+sec:Label("This is a label.")
+sec:Paragraph("Paragraph", "This is a paragraph with more detailed information.")
 
-sectionA:Button("Click me!", function()
-    print("clicked")
+sec:Button("Button", function()
+    print("Button clicked!")
 end)
 
-sectionA:Label("Lorem ipsum dolor sit amet.")
-
-sectionA:Switch("Toggle me!", false, function(a)
-    print(a)
+sec:Switch("Switch", false, function(state)
+    print("Switch is now: ", state)
 end)
 
-sectionA:TextField("Enter text", "Type here...", function(a)
-    print(a)
+sec:TextField("Text Field", "Placeholder...", function(text)
+    print("Text entered: ", text)
 end)
 
-
-sectionA:Slider("Slider", 0, 100, 50, function(v)
-    print(v)
+sec:Slider("Slider", 0, 100, 50, function(value)
+    print("Slider value: ", value)
 end)
 
-sectionA:Dropdown("Dropdown", {"One", "Two", "Three"}, "One", function(v)
-    print(v)
+sec:Dropdown("Dropdown", {"Option 1", "Option 2", "Option 3"}, "Option 1", function(selected)
+    print("Dropdown selected: ", selected)
 end)
 
-sectionA:MultiDropdown("MultiDropdown", {"Apple", "Banana", "Cherry", "Date", "Elderberry"}, {"Apple", "Cherry"}, function(selectedOptions)
-    print("Selected:", table.concat(selectedOptions, ", "))
+sec:MultiDropdown("Multi Dropdown", {"Apples", "Bananas", "Cherries"}, {"Apples"}, function(selectedTable)
+    print("Multi Dropdown selected: ", table.concat(selectedTable, ", "))
 end)
 
-sectionA:ColorPicker("Color", Color3.fromRGB(21, 103, 251), function(c)
-    print(c)
+sec:ColorPicker("Colorpicker", Color3.fromRGB(255, 0, 0), function(color)
+    print("Color selected: ", color)
 end)
 
-sectionA:Keybind("Keybind", Enum.KeyCode.F, function()
-    print("keybind fired")
+sec:Keybind("Keybind", Enum.KeyCode.E, function()
+    print("Keybind pressed!")
 end)
 
-sectionA:Paragraph("Hello!", "This is a paragraph with some content below the title.")
+window:Divider("Other")
 
-window:Divider("Notifications")
+local notifSec = window:Section("Notifications", "bell")
 
-local sectionB = window:Section("Notifications")
-
-sectionB:Button("Temp Notify", function()
-    window:TempNotify("Heads up!", "Something happened.", "rbxassetid://12608259004")
+notifSec:Button("Temp Notification", function()
+    window:TempNotify("Example", "This is a temporary notification.", "bell")
 end)
 
-sectionB:Button("Notify 1", function()
-    window:Notify("Hello!", "I am a notification", "OK", "rbxassetid://12608259004", function()
-        print(1)
-    end)
+notifSec:Button("Notification 1", function()
+    window:Notify("Notify 1", "This is a notification with one button.", "Okay", "info")
 end)
 
-sectionB:Button("Notify 2", function()
-    window:Notify2("Hello!", "I am a notification", "Yes", "No", "rbxassetid://12608259004", function()
-        print(1)
-    end, function()
-        print(2)
-    end)
+notifSec:Button("Notification 2", function()
+    window:Notify2("Notify 2", "This is a notification with two buttons.", "Yes", "No", "warning")
 end)
-
-window:GreenButton(function()
-    print("green button clicked")
-end)
-
-sectionA:Select()
