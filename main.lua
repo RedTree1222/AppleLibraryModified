@@ -1,5 +1,11 @@
+-- Clean up lingering DepthOfField effects from previous script executions before loading the new one
+for _, v in pairs(game:GetService("Lighting"):GetChildren()) do
+    if v:IsA("DepthOfFieldEffect") then v:Destroy() end
+end
+
 local lib = {}
 local blur = loadstring(game:HttpGet("https://raw.githubusercontent.com/RedTree1222/AppleLibraryModified/refs/heads/main/Blur.luau"))()
+local lucideIcons = loadstring(game:HttpGet("https://raw.githubusercontent.com/latte-soft/lucide-roblox/master/lib/Icons.luau"))()
 lib.ButtonStyle = "Modern"
 lib.FolderName = "AppleLibraryModified"
 local sections = {}
@@ -242,11 +248,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
     end
     
-    local hoverElements = {}
-    local function applyHoverCursor(element)
-        table.insert(hoverElements, element)
-    end
-
+    
 
     local iconMap = {
         ["arrow-left-to-line"] = "rbxassetid://10709768114",
@@ -260,10 +262,26 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         ["info"] = "rbxassetid://4871684504"
     }
     
-    local function resolveIcon(iconId)
-        if iconMap[iconId] then return iconMap[iconId] end
-        if string.find(iconId, "rbxassetid://") then return iconId end
-        return "rbxassetid://10734909540"
+    local function resolveIcon(imageLabel, iconId)
+        if type(iconId) ~= "string" then iconId = "rbxassetid://10709768114" end
+        if string.find(iconId, "rbxassetid://") then
+            imageLabel.Image = iconId
+            imageLabel.ImageRectSize = Vector2.new(0, 0)
+            imageLabel.ImageRectOffset = Vector2.new(0, 0)
+        elseif lucideIcons[iconId] then
+            local data = lucideIcons[iconId]
+            imageLabel.Image = "rbxassetid://" .. tostring(data[1])
+            imageLabel.ImageRectSize = Vector2.new(data[2][1], data[2][2])
+            imageLabel.ImageRectOffset = Vector2.new(data[3][1], data[3][2])
+        elseif iconMap[iconId] then
+            imageLabel.Image = iconMap[iconId]
+            imageLabel.ImageRectSize = Vector2.new(0, 0)
+            imageLabel.ImageRectOffset = Vector2.new(0, 0)
+        else
+            imageLabel.Image = "rbxassetid://10734909540"
+            imageLabel.ImageRectSize = Vector2.new(0, 0)
+            imageLabel.ImageRectOffset = Vector2.new(0, 0)
+        end
     end
 
     local function applyLucide(imgLabel, iconName)
@@ -289,10 +307,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 v:Destroy()
             end
         end
-        -- Also clean up any lingering DepthOfField effects from previous runs if we're reloading
-        for _, v in pairs(game:GetService("Lighting"):GetChildren()) do
-            if v:IsA("DepthOfFieldEffect") then v:Destroy() end
-        end
+
     end
     scrgui = Instance.new("ScreenGui")
     scrgui.Name = "AppleLibrary_GUI"
@@ -377,6 +392,14 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     keybindsWindowFrame.Visible = false
     registerTheme(keybindsWindowFrame, "BackgroundColor3", Color3.fromRGB(249, 249, 255), Color3.fromRGB(18, 18, 24))
     
+    local kbBlurFrame = Instance.new("Frame")
+    kbBlurFrame.Name = "blurFrame"
+    kbBlurFrame.Parent = keybindsWindowFrame
+    kbBlurFrame.BackgroundTransparency = 1
+    kbBlurFrame.Position = UDim2.new(0, 2, 0, 2)
+    kbBlurFrame.Size = UDim2.new(1, -4, 1, -4)
+    kbBlurFrame.ZIndex = 0
+    
     local kb_uc = Instance.new("UICorner")
     kb_uc.CornerRadius = UDim.new(0, 8)
     kb_uc.Parent = keybindsWindowFrame
@@ -450,8 +473,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     blurFrame.Name = "blurFrame"
     blurFrame.Parent = main
     blurFrame.BackgroundTransparency = 1
-    blurFrame.Position = UDim2.new(0, 4, 0, 4)
-    blurFrame.Size = UDim2.new(1, -8, 1, -8)
+    blurFrame.Position = UDim2.new(0, 0, 0, 0)
+    blurFrame.Size = UDim2.new(1, 0, 1, 0)
     blurFrame.ZIndex = 0
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.Position = UDim2.new(0.5, 0, 2, 0)
@@ -631,8 +654,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local refreshBtn = Instance.new("ImageButton")
     refreshBtn.Name = "refreshBtn"
-    applyHoverCursor(refreshBtn)
-    refreshBtn.Parent = main
+        refreshBtn.Parent = main
     refreshBtn.Size = UDim2.new(0, 24, 0, 24)
     refreshBtn.Position = UDim2.new(0, 18, 1, -84)
     refreshBtn.BackgroundTransparency = 1
@@ -866,8 +888,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local close = Instance.new("TextButton")
     close.Name = "close"
-    applyHoverCursor(close)
-    close.Parent = buttons
+        close.Parent = buttons
     close.BackgroundColor3 = Color3.fromRGB(254, 94, 86)
     close.Size = UDim2.new(0, 16, 0, 16)
     close.AutoButtonColor = false
@@ -884,9 +905,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         end
         local neonFolder = workspace.CurrentCamera:FindFirstChild("Neon")
         if neonFolder then neonFolder:Destroy() end
-        local cc = scrgui:FindFirstChild("CustomCursor")
-        if cc then cc.Visible = false end
-        RunService:UnbindFromRenderStep("AppleLibCursorSync")
+        RunService:UnbindFromRenderStep("AppleLibMouseUnlock")
         UserInputService.MouseIconEnabled = true
         task.delay(0.1, function()
             UserInputService.MouseIconEnabled = true
@@ -909,8 +928,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local minimize = Instance.new("TextButton")
     minimize.Name = "minimize"
-    applyHoverCursor(minimize)
-    minimize.Parent = buttons
+        minimize.Parent = buttons
     minimize.BackgroundColor3 = Color3.fromRGB(255, 189, 46)
     minimize.Size = UDim2.new(0, 16, 0, 16)
     minimize.AutoButtonColor = false
@@ -1098,8 +1116,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
     local moonbtn = Instance.new("ImageButton")
     moonbtn.Name = "moonbtn"
-    applyHoverCursor(moonbtn)
-    moonbtn.Parent = main
+        moonbtn.Parent = main
     moonbtn.Size = UDim2.new(0, 24, 0, 24)
     moonbtn.Position = UDim2.new(1, -40, 0, 16)
     moonbtn.BackgroundTransparency = 1
@@ -1499,64 +1516,38 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     tp(main, UDim2.new(0.5, 0, 0.5, 0), 1)
     window = {}
 
-    local customCursorAsset = getAsset("Assets/cursor.png")
-    local mouse = game:GetService("Players").LocalPlayer:GetMouse()
 
-    local customCursor = Instance.new("ImageLabel")
-    customCursor.Name = "CustomCursor"
-    customCursor.Parent = scrgui
-    customCursor.BackgroundTransparency = 1
-    customCursor.Size = UDim2.new(0, 28, 0, 28)
-    customCursor.AnchorPoint = Vector2.new(0, 0)
-    customCursor.ZIndex = 100000
-    customCursor.Visible = false
-
-    local useCustomCursor = not isMob
-    
-    local customPointerAsset = getAsset("Assets/pointer.png")
-    for _, element in ipairs(hoverElements) do
-        element.MouseEnter:Connect(function()
-            if customCursor.Visible and customPointerAsset ~= "" then
-                customCursor.Image = customPointerAsset
-            end
-        end)
-        element.MouseLeave:Connect(function()
-            if customCursor.Visible and customCursorAsset ~= "" then
-                customCursor.Image = customCursorAsset
-            end
-        end)
-    end
 
     local originalMouseIconEnabled = true
     local originalMouseBehavior = Enum.MouseBehavior.Default
-    local function updateCursor()
-        if customCursorAsset ~= "" and useCustomCursor then
-            customCursor.Image = customCursorAsset
-            if visible then
-                UserInputService.MouseIconEnabled = false
-                customCursor.Visible = true
-            else
-                UserInputService.MouseIconEnabled = originalMouseIconEnabled
-                customCursor.Visible = false
-            end
-        else
-            UserInputService.MouseIconEnabled = originalMouseIconEnabled
-            customCursor.Visible = false
-        end
-    end
-    updateCursor()
 
-    local cursorRenderName = "AppleLibCursorSync"
+    local cursorRenderName = "AppleLibMouseUnlock"
+    pcall(function() RunService:UnbindFromRenderStep(cursorRenderName) end)
     RunService:BindToRenderStep(cursorRenderName, 2000, function() -- 2000 is late enough to override CoreGui
-        if customCursor.Visible then
-            local pos = UserInputService:GetMouseLocation()
-            customCursor.Position = UDim2.new(0, pos.X - 10, 0, pos.Y)
-            UserInputService.MouseIconEnabled = false
+        if visible then
+            -- Allow user to right-click drag the camera in third person without fighting the loop
+            if not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            end
         end
     end)
 
     local lastX, lastY = 0, 0
     -- toggle ui visibility
+    function window:PromptKeybind(callback, flag)
+        if isPromptingKeybind then return end
+        isPromptingKeybind = true
+        keybindPromptCallback = callback
+        keybindPromptElementName = flag or "Unknown"
+        if kpTitle then kpTitle.Text = "Binding: " .. (flag or "") end
+        if kpSub then kpSub.Text = "Press a key... [ESC to cancel]" end
+        if notifdarkness then 
+            notifdarkness.ZIndex = 100
+            notifdarkness.Visible = true 
+        end
+        if keybindPromptFrame then keybindPromptFrame.Visible = true end
+    end
+    
     function window:ToggleVisible()
         if dbcooper then return end
         if not visible then
@@ -1568,7 +1559,6 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         
         modalUnlocker.Modal = visible
         
-        updateCursor()
         if visible then
             if blurEnabled then
                 blur:BindFrame(blurFrame, {
@@ -1680,7 +1670,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         ticon.Position = UDim2.new(0.0311112702, 0, 0.193464488, 0)
         ticon.Size = UDim2.new(0, 71, 0, 71)
         ticon.ZIndex = 102
-        ticon.Image = resolveIcon(icon)
+        resolveIcon(ticon, icon)
         registerTheme(ticon, "ImageColor3", Color3.fromRGB(95, 95, 95), Color3.fromRGB(200, 200, 200))
         ticon.ScaleType = Enum.ScaleType.Fit
 
@@ -1715,7 +1705,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
         notiftitle.Text = txt1
         notiftext.Text = txt2
-        notificon.Image = resolveIcon(icohn)
+        resolveIcon(notificon, icohn)
         if not notif:FindFirstChild("notifScale") then
             local notifScale = Instance.new("UIScale")
             notifScale.Name = "notifScale"
@@ -1754,7 +1744,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         if notif.Visible == true or notif2.Visible == true then return "Already visible" end
         notif2title.Text = txt1
         notif2text.Text = txt2
-        notif2icon.Image = resolveIcon(icohn)
+        resolveIcon(notif2icon, icohn)
         if not notif2:FindFirstChild("notif2Scale") then
             local notif2Scale = Instance.new("UIScale")
             notif2Scale.Name = "notif2Scale"
@@ -1874,13 +1864,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             iconImg.Parent = sidebar2
             iconImg.ZIndex = 20
             iconImg.Active = false
-            if iconMap[iconId] then
-                iconImg.Image = iconMap[iconId]
-            elseif string.find(iconId, "rbxassetid://") then
-                iconImg.Image = iconId
-            else
-                iconImg.Image = "rbxassetid://10734909540" -- default to package
-            end
+            resolveIcon(iconImg, iconId)
             registerTheme(iconImg, "ImageColor3", txtL, txtD)
         end
 
@@ -1986,11 +1970,14 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
 
             local targetY = sidebar2.AbsolutePosition.Y - main.AbsolutePosition.Y
             local targetX = sidebar2.AbsolutePosition.X - main.AbsolutePosition.X
+            local currentHighlightWidth = isSidebarCollapsed and 34 or (expandedSidebarWidth - 7)
             if isNewHighlight then
                 highlight.Position = UDim2.new(0, targetX, 0, targetY)
+                highlight.Size = UDim2.new(0, currentHighlightWidth, 0, 34)
             else
                 TweenService:Create(highlight, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                    Position = UDim2.new(0, targetX, 0, targetY)
+                    Position = UDim2.new(0, targetX, 0, targetY),
+                    Size = UDim2.new(0, currentHighlightWidth, 0, 34)
                 }):Play()
             end
 
@@ -3141,8 +3128,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             kblabel.TextXAlignment = Enum.TextXAlignment.Left
 
             local kbbtn = Instance.new("TextButton")
-            applyHoverCursor(kbbtn)
-            kbbtn.Name = "kbbtn"
+                        kbbtn.Name = "kbbtn"
             kbbtn.Parent = kbrow
             registerTheme(kbbtn, "BackgroundColor3", Color3.fromRGB(228, 228, 238), Color3.fromRGB(32, 32, 42))
             kbbtn.Position = UDim2.new(1, -70, 0.5, -17)
@@ -3308,13 +3294,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             keybindsWindowFrame.Visible = v
             if blurEnabled then
                 if v then
-                    blur:BindFrame(keybindsWindowFrame, {
+                    blur:BindFrame(keybindsWindowFrame.blurFrame, {
                         Transparency = 0.98,
                         Color = Color3.fromRGB(255, 255, 255)
                     })
                 else
-                    if blur:HasBinding(keybindsWindowFrame) then
-                        blur:UnbindFrame(keybindsWindowFrame)
+                    if blur:HasBinding(keybindsWindowFrame.blurFrame) then
+                        blur:UnbindFrame(keybindsWindowFrame.blurFrame)
                     end
                 end
             end
@@ -3390,8 +3376,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         
         setsec:Switch("Custom Crosshair", false, function(v)
             useCustomCursor = v
-            updateCursor()
-        end, "Settings_Crosshair")
+            end, "Settings_Crosshair")
 
         setsec:Slider("UI Transparency", 0, 100, 15, function(v)
             main.BackgroundTransparency = v / 100
@@ -3465,14 +3450,13 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         setsec:Switch("Blur Background", false, function(v)
             blurEnabled = v
             if v then
-                -- Only bind if it's currently rendered on-screen, otherwise it's handled by ToggleVisible/init
-                if visible and main.Position.Y.Scale < 1 then
+                if visible then
                     blur:BindFrame(blurFrame, {
                         Transparency = 0.98,
                         Color = Color3.fromRGB(255, 255, 255)
                     })
                     if keybindsWindowFrame.Visible then
-                        blur:BindFrame(keybindsWindowFrame, {
+                        blur:BindFrame(keybindsWindowFrame.blurFrame, {
                             Transparency = 0.98,
                             Color = Color3.fromRGB(255, 255, 255)
                         })
@@ -3482,8 +3466,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                 if blur:HasBinding(blurFrame) then
                     blur:UnbindFrame(blurFrame)
                 end
-                if blur:HasBinding(keybindsWindowFrame) then
-                    blur:UnbindFrame(keybindsWindowFrame)
+                if blur:HasBinding(keybindsWindowFrame.blurFrame) then
+                    blur:UnbindFrame(keybindsWindowFrame.blurFrame)
                 end
             end
         end, "Settings_BlurBackground")
@@ -3791,6 +3775,11 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         TweenService:Create(workarea, tweenInfo, {
             Position = UDim2.new(0, workPosX, 0, 0),
             Size = UDim2.new(1, -workPosX, 1, 0)
+        }):Play()
+        
+        TweenService:Create(title, tweenInfo, {
+            Position = UDim2.new(0, isSidebarCollapsed and 16 or 16, 0, isSidebarCollapsed and 50 or 16),
+            TextTransparency = 0
         }):Play()
 
         local searchWidth = isSidebarCollapsed and 34 or (expandedSidebarWidth - 8)

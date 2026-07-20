@@ -44,14 +44,15 @@ window:Notify2(titleText: string, paragraphText: string, button1Text: string, bu
 window:Divider(text: string)
 ```
 - section/tab: holds your elements. returns a table.
-  you can pass a second arg for the icon. The library comes with 7 built-in Lucide icons:
-  `"home"`, `"bell"`, `"settings"`, `"keyboard"`, `"users"`, `"package"`, `"refresh-ccw"`
+  you can pass a second arg for the icon. The library now integrates all **1,747 official Lucide icons** dynamically!
+  You can use any Lucide icon name.
+  Check out [lucide.dev/icons](https://lucide.dev/icons) for the full list of supported names.
   
-  If you want to use a different icon, you can pass ANY direct Roblox asset ID instead!
+  If you want to use a custom image, you can still pass ANY direct Roblox asset ID as well!
   ```lua
   local section = window:Section(text: string, icon: string)
-  -- Example using built-in:
-  local sec1 = window:Section("Main", "home")
+  -- Example using built-in Lucide:
+  local sec1 = window:Section("Main", "swords")
   -- Example using custom asset ID:
   local sec2 = window:Section("Custom", "rbxassetid://123456789")
   ```
