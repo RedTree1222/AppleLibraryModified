@@ -268,8 +268,8 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             imageLabel.Image = iconId
             imageLabel.ImageRectSize = Vector2.new(0, 0)
             imageLabel.ImageRectOffset = Vector2.new(0, 0)
-        elseif lucideIcons[iconId] then
-            local data = lucideIcons[iconId]
+        elseif lucideIcons["48px"] and lucideIcons["48px"][iconId] then
+            local data = lucideIcons["48px"][iconId]
             imageLabel.Image = "rbxassetid://" .. tostring(data[1])
             imageLabel.ImageRectSize = Vector2.new(data[2][1], data[2][2])
             imageLabel.ImageRectOffset = Vector2.new(data[3][1], data[3][2])
