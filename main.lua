@@ -641,62 +641,165 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     workareacornerhider.Size = UDim2.new(0, 18, 1, 0)
     workareacornerhider.BackgroundTransparency = 1
 
+
+
+    local ellipsisBtn = Instance.new("ImageButton")
+    ellipsisBtn.Name = "ellipsisBtn"
+    ellipsisBtn.Parent = main
+    ellipsisBtn.Size = UDim2.new(0, 24, 0, 24)
+    ellipsisBtn.AnchorPoint = Vector2.new(1, 0)
+    ellipsisBtn.Position = UDim2.new(1, -16, 0, 12)
+    ellipsisBtn.BackgroundTransparency = 1
+    ellipsisBtn.ZIndex = 26
+    resolveIcon(ellipsisBtn, "ellipsis-vertical")
+    registerTheme(ellipsisBtn, "ImageColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+
     local collapseBtn = Instance.new("ImageButton")
     collapseBtn.Name = "collapseBtn"
     collapseBtn.Parent = main
     collapseBtn.Size = UDim2.new(0, 24, 0, 24)
-    collapseBtn.Position = UDim2.new(0, 18, 1, -44)
+    collapseBtn.AnchorPoint = Vector2.new(1, 0)
+    collapseBtn.Position = UDim2.new(1, -16, 0, 12)
     collapseBtn.BackgroundTransparency = 1
-    collapseBtn.Image = "rbxassetid://10709768114"
-    collapseBtn.ImageColor3 = Color3.fromRGB(140, 140, 155)
+    collapseBtn.ImageTransparency = 1
+    collapseBtn.Active = false
+    collapseBtn.Visible = false
     collapseBtn.ZIndex = 25
+    resolveIcon(collapseBtn, "panel-left-close")
     registerTheme(collapseBtn, "ImageColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
 
     local refreshBtn = Instance.new("ImageButton")
     refreshBtn.Name = "refreshBtn"
-        refreshBtn.Parent = main
+    refreshBtn.Parent = main
     refreshBtn.Size = UDim2.new(0, 24, 0, 24)
-    refreshBtn.Position = UDim2.new(0, 18, 1, -84)
+    refreshBtn.AnchorPoint = Vector2.new(1, 0)
+    refreshBtn.Position = UDim2.new(1, -16, 0, 12)
     refreshBtn.BackgroundTransparency = 1
-    refreshBtn.Image = "rbxassetid://10734933056"
-    refreshBtn.ImageColor3 = Color3.fromRGB(140, 140, 155)
+    refreshBtn.ImageTransparency = 1
+    refreshBtn.Active = false
+    refreshBtn.Visible = false
     refreshBtn.ZIndex = 25
+    resolveIcon(refreshBtn, "rotate-cw")
     registerTheme(refreshBtn, "ImageColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
 
-    refreshBtn.MouseButton1Click:Connect(function()
-        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        TweenService:Create(refreshBtn, tweenInfo, {Rotation = refreshBtn.Rotation + 360}):Play()
-        local vp = workspace.CurrentCamera.ViewportSize
-        local w = math.clamp(721, 400, vp.X - 40)
-        local h = math.clamp(584, 300, vp.Y - 40)
-        TweenService:Create(main, tweenInfo, {Size = UDim2.new(0, w, 0, h)}):Play()
-        
-        expandedSidebarWidth = 190
-        sidebarResizer.Position = UDim2.new(0, 18 + expandedSidebarWidth - 4, 0, 106)
-        if not isSidebarCollapsed then
-            TweenService:Create(sidebar, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth, 1, -124)}):Play()
-            TweenService:Create(workarea, tweenInfo, {
-                Position = UDim2.new(0, expandedSidebarWidth + 30, 0, 0),
-                Size = UDim2.new(1, -(expandedSidebarWidth + 30), 1, 0)
-            }):Play()
+    local moonbtn = Instance.new("ImageButton")
+    moonbtn.Name = "moonbtn"
+    moonbtn.Parent = main
+    moonbtn.Size = UDim2.new(0, 24, 0, 24)
+    moonbtn.AnchorPoint = Vector2.new(1, 0)
+    moonbtn.Position = UDim2.new(1, -16, 0, 12)
+    moonbtn.BackgroundTransparency = 1
+    moonbtn.ImageTransparency = 1
+    moonbtn.Active = false
+    moonbtn.Visible = false
+    moonbtn.ZIndex = 25
+    resolveIcon(moonbtn, currentTheme == "light" and "moon" or "sun")
+    registerTheme(moonbtn, "ImageColor3", Color3.fromRGB(140, 140, 155), Color3.fromRGB(160, 160, 180))
+
+    local ellipsisExpanded = false
+    ellipsisBtn.MouseButton1Click:Connect(function()
+        ellipsisExpanded = not ellipsisExpanded
+        local twInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        if ellipsisExpanded then
+            collapseBtn.Visible = true
+            refreshBtn.Visible = true
+            moonbtn.Visible = true
+            collapseBtn.Active = true
+            refreshBtn.Active = true
+            moonbtn.Active = true
+            TweenService:Create(collapseBtn, twInfo, { Position = UDim2.new(1, -112, 0, 12), ImageTransparency = 0 }):Play()
+            TweenService:Create(refreshBtn, twInfo, { Position = UDim2.new(1, -80, 0, 12), ImageTransparency = 0 }):Play()
+            TweenService:Create(moonbtn, twInfo, { Position = UDim2.new(1, -48, 0, 12), ImageTransparency = 0 }):Play()
+            TweenService:Create(ellipsisBtn, twInfo, { Rotation = 90 }):Play()
+        else
+            collapseBtn.Active = false
+            refreshBtn.Active = false
+            moonbtn.Active = false
+            TweenService:Create(collapseBtn, twInfo, { Position = UDim2.new(1, -16, 0, 12), ImageTransparency = 1 }):Play()
+            TweenService:Create(refreshBtn, twInfo, { Position = UDim2.new(1, -16, 0, 12), ImageTransparency = 1 }):Play()
+            TweenService:Create(moonbtn, twInfo, { Position = UDim2.new(1, -16, 0, 12), ImageTransparency = 1 }):Play()
+            TweenService:Create(ellipsisBtn, twInfo, { Rotation = 0 }):Play()
             
-            local searchWidth = expandedSidebarWidth - 8
-            TweenService:Create(search, tweenInfo, {Size = UDim2.new(0, searchWidth, 0, 34)}):Play()
-            
-            for _, btn in ipairs(sidebar:GetChildren()) do
-                if btn:IsA("TextButton") and btn.Name == "sidebar2" then
-                    TweenService:Create(btn, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)}):Play()
-                elseif btn:IsA("TextLabel") and btn.Name == "sidebardivider" then
-                    TweenService:Create(btn, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 20)}):Play()
+            task.delay(0.3, function()
+                if not ellipsisExpanded then
+                    collapseBtn.Visible = false
+                    refreshBtn.Visible = false
+                    moonbtn.Visible = false
                 end
-            end
-            
-            local highlight = main:FindFirstChild("TabHighlight")
-            if highlight then
-                TweenService:Create(highlight, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)}):Play()
-            end
+            end)
         end
     end)
+
+    local function toggleTheme()
+        currentTheme = (currentTheme == "light") and "dark" or "light"
+        ConfigManager:SaveUISettings(currentTheme, ConfigManager.DisableSplash, ConfigManager.AccentColor, ConfigManager.Rainbow)
+        resolveIcon(moonbtn, currentTheme == "light" and "moon" or "sun")
+        for _, item in ipairs(themeElements) do
+            pcall(function()
+                if item.IsToggle and item.GetToggleState() then
+                    item.Instance[item.Property] = currentAccentColor
+                else
+                    item.Instance[item.Property] = (currentTheme == "light") and item.Light or item.Dark
+                end
+            end)
+        end
+        local bgL = Color3.fromRGB(0, 0, 0)
+        local bgD = Color3.fromRGB(255, 255, 255)
+        local txtL = Color3.fromRGB(100, 100, 100)
+        local txtD = Color3.fromRGB(140, 140, 155)
+        for _, v in next, sections do
+            v.BackgroundColor3 = (currentTheme == "light") and bgL or bgD
+            local ico = v:FindFirstChild("iconImg")
+            if v.Name == "sidebar2_selected" then
+                v.TextColor3 = Color3.fromRGB(255, 255, 255)
+                if ico then ico.ImageColor3 = Color3.fromRGB(255, 255, 255) end
+            else
+                v.TextColor3 = (currentTheme == "light") and txtL or txtD
+                if ico then ico.ImageColor3 = (currentTheme == "light") and txtL or txtD end
+            end
+        end
+    end
+
+    moonbtn.MouseButton1Click:Connect(function()
+        local twClick = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(moonbtn, twClick, { Rotation = moonbtn.Rotation - 180 }):Play()
+        toggleTheme()
+    end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     local search = Instance.new("Frame")
     search.Name = "search"
@@ -1114,46 +1217,9 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     title.TextWrapped = true
     title.TextXAlignment = Enum.TextXAlignment.Left
 
-    local moonbtn = Instance.new("ImageButton")
-    moonbtn.Name = "moonbtn"
-        moonbtn.Parent = main
-    moonbtn.Size = UDim2.new(0, 24, 0, 24)
-    moonbtn.Position = UDim2.new(1, -40, 0, 16)
-    moonbtn.BackgroundTransparency = 1
-    moonbtn.Image = getAsset("Assets/blackmoon.png")
-    moonbtn.ZIndex = 21
 
-    local function toggleTheme()
-        currentTheme = (currentTheme == "light") and "dark" or "light"
-        ConfigManager:SaveUISettings(currentTheme, ConfigManager.DisableSplash, ConfigManager.AccentColor, ConfigManager.Rainbow)
-        moonbtn.Image = getAsset(currentTheme == "light" and "Assets/blackmoon.png" or "Assets/whitemoon.png")
-        for _, item in ipairs(themeElements) do
-            pcall(function()
-                if item.IsToggle and item.GetToggleState() then
-                    item.Instance[item.Property] = currentAccentColor
-                else
-                    item.Instance[item.Property] = (currentTheme == "light") and item.Light or item.Dark
-                end
-            end)
-        end
-        local bgL = Color3.fromRGB(0, 0, 0)
-        local bgD = Color3.fromRGB(255, 255, 255)
-        local txtL = Color3.fromRGB(100, 100, 100)
-        local txtD = Color3.fromRGB(140, 140, 155)
-        for _, v in next, sections do
-            v.BackgroundColor3 = (currentTheme == "light") and bgL or bgD
-            local ico = v:FindFirstChild("iconImg")
-            if v.Name == "sidebar2_selected" then
-                v.TextColor3 = Color3.fromRGB(255, 255, 255)
-                if ico then ico.ImageColor3 = Color3.fromRGB(255, 255, 255) end
-            else
-                v.TextColor3 = (currentTheme == "light") and txtL or txtD
-                if ico then ico.ImageColor3 = (currentTheme == "light") and txtL or txtD end
-            end
-        end
-    end
 
-    moonbtn.MouseButton1Click:Connect(toggleTheme)
+
 
     local resizeRight = Instance.new("TextButton")
     resizeRight.Name = "resizeRight"
@@ -3759,6 +3825,185 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     CreateKeybindsTab()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    local autoloadConfig = ConfigManager:GetAutoLoad()
+    if autoloadConfig then
+        task.spawn(function()
+            task.wait(1)
+            ConfigManager:Load(autoloadConfig)
+            window:TempNotify("AutoLoad", "Loaded config: " .. autoloadConfig, "rbxassetid://12608259004")
+        end)
+    end
+
+    local ScriptContext = game:GetService("ScriptContext")
+    local seenErrors = {}
+    ScriptContext.Error:Connect(function(message, trace, script)
+        if errorCatcherEnabled then
+            local errMsg = tostring(message)
+            if not seenErrors[errMsg] then
+                seenErrors[errMsg] = true
+                task.spawn(function()
+                    task.wait(0.5)
+                    window:Notify2("Script Error", errMsg, "Copy", "OK", "rbxassetid://12608259004", function()
+                        if setclipboard then setclipboard(errMsg .. "\n" .. tostring(trace)) end
+                    end, function() end)
+                end)
+            end
+        end
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if isPromptingKeybind and input.UserInputType == Enum.UserInputType.Keyboard then
+            if input.KeyCode == Enum.KeyCode.Escape then
+                isPromptingKeybind = false
+                if keybindPromptFrame then keybindPromptFrame.Visible = false end
+                if notifdarkness then notifdarkness.Visible = false end
+            elseif input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode ~= Enum.KeyCode.Backspace then
+                isPromptingKeybind = false
+                if keybindPromptFrame then keybindPromptFrame.Visible = false end
+                if notifdarkness then notifdarkness.Visible = false end
+                
+                -- Remove existing bind for this element if rebinding
+                for i = #activeKeybindData, 1, -1 do
+                    if activeKeybindData[i].Name == keybindPromptElementName then
+                        table.remove(activeKeybindData, i)
+                    end
+                end
+                
+                table.insert(activeKeybindData, { Name = keybindPromptElementName, Key = input.KeyCode.Name, Enabled = true, Callback = keybindPromptCallback })
+                
+                if refreshKeybindsUI then refreshKeybindsUI() end
+                window:TempNotify("Keybind Set", "Bound to: " .. input.KeyCode.Name, "rbxassetid://12608259004")
+            end
+            return
+        end
+
+        if not isPromptingKeybind and not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
+            for _, bindInfo in ipairs(activeKeybindData) do
+                if bindInfo.Enabled and bindInfo.Key == input.KeyCode.Name then
+                    if bindInfo.Callback then
+                        pcall(bindInfo.Callback)
+                    end
+                end
+            end
+        end
+    end)
+
     collapseBtn.MouseButton1Click:Connect(function()
         if collapseCooldown then return end
         collapseCooldown = true
@@ -3778,7 +4023,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         }):Play()
         
         TweenService:Create(title, tweenInfo, {
-            Position = UDim2.new(0, isSidebarCollapsed and 16 or 16, 0, isSidebarCollapsed and 50 or 16),
+            Position = UDim2.new(0, isSidebarCollapsed and 16 or 16, 0, isSidebarCollapsed and 34 or 16),
             TextTransparency = 0
         }):Play()
 
@@ -3873,6 +4118,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
                     if connection then connection:Disconnect() end
                 end
             end)
+            
             task.delay(0.4, function()
                 if connection then connection:Disconnect() end
             end)
@@ -3881,65 +4127,37 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         task.delay(0.4, function() collapseCooldown = false end)
     end)
 
-    local autoloadConfig = ConfigManager:GetAutoLoad()
-    if autoloadConfig then
-        task.spawn(function()
-            task.wait(1)
-            ConfigManager:Load(autoloadConfig)
-            window:TempNotify("AutoLoad", "Loaded config: " .. autoloadConfig, "rbxassetid://12608259004")
-        end)
-    end
-
-    local ScriptContext = game:GetService("ScriptContext")
-    local seenErrors = {}
-    ScriptContext.Error:Connect(function(message, trace, script)
-        if errorCatcherEnabled then
-            local errMsg = tostring(message)
-            if not seenErrors[errMsg] then
-                seenErrors[errMsg] = true
-                task.spawn(function()
-                    task.wait(0.5)
-                    window:Notify2("Script Error", errMsg, "Copy", "OK", "rbxassetid://12608259004", function()
-                        if setclipboard then setclipboard(errMsg .. "\n" .. tostring(trace)) end
-                    end, function() end)
-                end)
-            end
-        end
-    end)
-
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if isPromptingKeybind and input.UserInputType == Enum.UserInputType.Keyboard then
-            if input.KeyCode == Enum.KeyCode.Escape then
-                isPromptingKeybind = false
-                if keybindPromptFrame then keybindPromptFrame.Visible = false end
-                if notifdarkness then notifdarkness.Visible = false end
-            elseif input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode ~= Enum.KeyCode.Backspace then
-                isPromptingKeybind = false
-                if keybindPromptFrame then keybindPromptFrame.Visible = false end
-                if notifdarkness then notifdarkness.Visible = false end
-                
-                -- Remove existing bind for this element if rebinding
-                for i = #activeKeybindData, 1, -1 do
-                    if activeKeybindData[i].Name == keybindPromptElementName then
-                        table.remove(activeKeybindData, i)
-                    end
+    refreshBtn.MouseButton1Click:Connect(function()
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        TweenService:Create(refreshBtn, tweenInfo, {Rotation = refreshBtn.Rotation + 360}):Play()
+        local vp = workspace.CurrentCamera.ViewportSize
+        local w = math.clamp(721, 400, vp.X - 40)
+        local h = math.clamp(584, 300, vp.Y - 40)
+        TweenService:Create(main, tweenInfo, {Size = UDim2.new(0, w, 0, h)}):Play()
+        
+        expandedSidebarWidth = 190
+        sidebarResizer.Position = UDim2.new(0, 18 + expandedSidebarWidth - 4, 0, 106)
+        if not isSidebarCollapsed then
+            TweenService:Create(sidebar, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth, 1, -124)}):Play()
+            TweenService:Create(workarea, tweenInfo, {
+                Position = UDim2.new(0, expandedSidebarWidth + 30, 0, 0),
+                Size = UDim2.new(1, -(expandedSidebarWidth + 30), 1, 0)
+            }):Play()
+            
+            local searchWidth = expandedSidebarWidth - 8
+            TweenService:Create(search, tweenInfo, {Size = UDim2.new(0, searchWidth, 0, 34)}):Play()
+            
+            for _, btn in ipairs(sidebar:GetChildren()) do
+                if btn:IsA("TextButton") and btn.Name == "sidebar2" then
+                    TweenService:Create(btn, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)}):Play()
+                elseif btn:IsA("TextLabel") and btn.Name == "sidebardivider" then
+                    TweenService:Create(btn, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 20)}):Play()
                 end
-                
-                table.insert(activeKeybindData, { Name = keybindPromptElementName, Key = input.KeyCode.Name, Enabled = true, Callback = keybindPromptCallback })
-                
-                if refreshKeybindsUI then refreshKeybindsUI() end
-                window:TempNotify("Keybind Set", "Bound to: " .. input.KeyCode.Name, "rbxassetid://12608259004")
             end
-            return
-        end
-
-        if not isPromptingKeybind and not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
-            for _, bindInfo in ipairs(activeKeybindData) do
-                if bindInfo.Enabled and bindInfo.Key == input.KeyCode.Name then
-                    if bindInfo.Callback then
-                        pcall(bindInfo.Callback)
-                    end
-                end
+            
+            local highlight = main:FindFirstChild("TabHighlight")
+            if highlight then
+                TweenService:Create(highlight, tweenInfo, {Size = UDim2.new(0, expandedSidebarWidth - 7, 0, 34)}):Play()
             end
         end
     end)
